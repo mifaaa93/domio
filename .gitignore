@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# Virtualenv
+.venv/
+env/
+venv/
+ENV/
+
+# Alembic
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+# Миграции лучше хранить, но если хочешь игнорировать конкретные временные:
+# alembic/versions/*.tmp
+
+# Databases / local data
+*.db
+*.sqlite3
+*.sqlite
+*.xlsx
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / Editors
+.vscode/
+.idea/
+*.iml
+instr.txt
+
+# Environment / configs
+.env
+.env.*.local
+*.ini.local
