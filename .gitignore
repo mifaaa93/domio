@@ -42,5 +42,6 @@ instr.txt
 
 # Environment / configs
 .env
+.env copy
 .env.*.local
 *.ini.local

@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # === import your models for autogenerate ===
-from db.base import Base
 from db.models import *  # noqa: F401,F403
 
 config = context.config

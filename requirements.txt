@@ -3,3 +3,7 @@ alembic>=1.13
 psycopg2-binary>=2.9
 asyncpg
 python-dotenv>=1.0
+curl_cffi
+beautifulsoup4
+lxml
+aiogram>=3.7
