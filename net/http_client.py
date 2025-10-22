@@ -79,8 +79,8 @@ def http_request(
             # 429/5xx — ретраим
             if resp.status_code in _retry_statuses:
                 logger.warning(
-                    "HTTP %s %s -> %s (retryable), attempt %d/%d, proxy=%s",
-                    method, url, resp.status_code, attempt, _max_retries, proxies and list(proxies.values())[0],
+                    "HTTP %s %s -> %s (retryable), attempt %d/%d",
+                    method, url, resp.status_code, attempt, _max_retries,
                 )
                 if attempt < _max_retries:
                     _sleep_backoff(attempt)
@@ -93,8 +93,8 @@ def http_request(
         except Exception as e:
             last_exc = e
             logger.warning(
-                "HTTP %s %s raised %r, attempt %d/%d, proxy=%s",
-                method, url, e, attempt, _max_retries, proxies and list(proxies.values())[0],
+                "HTTP %s %s raised %r, attempt %d/%d",
+                method, url, e, attempt, _max_retries,
             )
             if attempt < _max_retries:
                 _sleep_backoff(attempt)

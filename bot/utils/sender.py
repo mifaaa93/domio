@@ -1,139 +1,131 @@
-import os
 import logging
 from typing import Optional, Union
+from aiogram import Bot
 from aiogram.types import (
-    Message, CallbackQuery, FSInputFile, InputMediaPhoto,
-    InputMediaVideo, InputMediaDocument, InputMediaAnimation
+    Message, CallbackQuery, FSInputFile,
+    InlineKeyboardMarkup, ReplyKeyboardMarkup,
+    InputMediaPhoto, InputMediaVideo, InputMediaDocument, InputMediaAnimation,
 )
 from aiogram.exceptions import TelegramBadRequest
-from aiogram import Bot
-
-from bot.utils.images import get_image
 
 logger = logging.getLogger("bot")
 
-# --- Глобальный кеш медиа file_id ---
-_media_cache: dict[tuple[str, str, str], str] = {}
+# --- Глобальный кеш file_id ---
 # (lang, key, type) → file_id
+_media_cache: dict[tuple[str, str, str], str] = {}
 
 
 async def send_or_edit_message(
     target: Union[Message, CallbackQuery],
     *,
     key: str,
-    lang: Optional[str] = None,
+    lang: str = "uk",
     text: Optional[str] = None,
-    keyboard=None,
+    keyboard: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardMarkup]] = None,
     bot: Optional[Bot] = None,
     try_edit: bool = False,
-    media_type: str = "photo",   # photo | video | document | animation
-    use_assets: bool = True,     # брать файл из assets
+    photo: Optional[str] = None,
+    video: Optional[str] = None,
+    document: Optional[str] = None,
+    animation: Optional[str] = None,
 ) -> Message:
     """
-    Универсальная функция для отправки/редактирования сообщений с кешом file_id.
+    Универсальная функция для отправки/редактирования сообщений Telegram.
+    ✅ принимает путь до файла (photo/video/document/animation)
+    ✅ использует кеш file_id (по ключу (lang, key, media_type))
+    ✅ поддерживает try_edit (edit_media/edit_text)
+    ✅ автоматически определяет тип клавиатуры (inline/reply)
     """
 
-    # --- определяем контекст ---
+    # --- контекст ---
     msg = target.message if isinstance(target, CallbackQuery) else target
     chat_id = msg.chat.id
-    lang = lang or "uk"
     bot = bot or msg.bot
-
-    # --- готовим текст и клавиатуру ---
     caption = text or ""
-    reply_markup = keyboard
 
-    # --- ищем медиа (если нужно) ---
-    file_id = None
-    media_file = None
-    cache_key = (lang, key, media_type)
+    # --- определяем тип медиа и путь ---
+    media_type = None
+    media_path = None
+    if photo:
+        media_type, media_path = "photo", photo
+    elif video:
+        media_type, media_path = "video", video
+    elif document:
+        media_type, media_path = "document", document
+    elif animation:
+        media_type, media_path = "animation", animation
 
-    if use_assets:
-        file_id = _media_cache.get(cache_key)
-        if not file_id:
-            media_file = get_image(lang, key) if media_type == "photo" else None
+    cache_key = (lang, key, media_type or "text")
+    file_id = _media_cache.get(cache_key)
+    media_file = None if file_id else (FSInputFile(media_path) if media_path else None)
 
-    # --- попытка редактирования ---
+    # --- редактирование ---
     if try_edit:
         try:
-            if media_file or file_id:
+            if media_type and (file_id or media_file):
                 media_cls = {
                     "photo": InputMediaPhoto,
                     "video": InputMediaVideo,
                     "document": InputMediaDocument,
                     "animation": InputMediaAnimation,
-                }.get(media_type, InputMediaPhoto)
-
-                media = media_cls(
-                    media=file_id or media_file,
-                    caption=caption,
-                )
-                await msg.edit_media(media=media, reply_markup=reply_markup)
+                }[media_type]
+                media = media_cls(media=file_id or media_file, caption=caption)
+                await msg.edit_media(media=media, reply_markup=keyboard)
             else:
-                await msg.edit_text(caption, reply_markup=reply_markup)
+                await msg.edit_text(caption, reply_markup=keyboard)
             return msg
         except TelegramBadRequest as e:
-            # если редактирование не удалось — удаляем и отправляем новое
-            logger.debug(f"Edit failed for key={key}: {e}")
+            logger.debug(f"Edit failed for {key} ({media_type}): {e}")
             try:
                 await msg.delete()
             except TelegramBadRequest:
                 pass
 
-    # --- отправляем новое сообщение ---
-    sent: Message | None = None
-
+    # --- отправка нового сообщения ---
     try:
-        if media_file or file_id:
-            # Отправляем медиа
+        if media_type and (file_id or media_file):
             sender = {
                 "photo": bot.send_photo,
                 "video": bot.send_video,
                 "document": bot.send_document,
                 "animation": bot.send_animation,
-            }.get(media_type, bot.send_photo)
+            }[media_type]
 
-            sent = await sender(
-                chat_id=chat_id,
-                photo=file_id or media_file,
-                caption=caption,
-                reply_markup=reply_markup,
-            ) if media_type == "photo" else await sender(
+            sent: Message = await sender(
                 chat_id=chat_id,
                 caption=caption,
-                reply_markup=reply_markup,
-                video=file_id or media_file if media_type == "video" else None,
-                document=file_id or media_file if media_type == "document" else None,
-                animation=file_id or media_file if media_type == "animation" else None,
+                reply_markup=keyboard,
+                **{media_type: file_id or media_file},
             )
 
-            # --- кешируем новый file_id ---
-            if sent and hasattr(sent, "photo") and sent.photo:
+            # кешируем file_id
+            if hasattr(sent, "photo") and sent.photo:
                 _media_cache[cache_key] = sent.photo[-1].file_id
-            elif sent and hasattr(sent, media_type):
+            elif hasattr(sent, media_type):
                 fobj = getattr(sent, media_type, None)
-                if fobj and hasattr(fobj, "file_id"):
+                if hasattr(fobj, "file_id"):
                     _media_cache[cache_key] = fobj.file_id
+            logger.debug(f"Cached file_id for {cache_key}")
 
         else:
-            sent = await bot.send_message(chat_id=chat_id, text=caption, reply_markup=reply_markup)
+            sent = await bot.send_message(chat_id=chat_id, text=caption, reply_markup=keyboard)
 
     except TelegramBadRequest as e:
-        # если file_id стал невалидным → очистим кеш
         if "file not found" in str(e).lower():
             _media_cache.pop(cache_key, None)
-            logger.warning(f"Invalid file_id, cache cleared for {cache_key}")
-            # повторим попытку без кеша
+            logger.warning(f"Invalid file_id — cache cleared for {cache_key}")
             return await send_or_edit_message(
-                target,
+                target=target,
                 key=key,
                 lang=lang,
                 text=text,
                 keyboard=keyboard,
                 bot=bot,
                 try_edit=False,
-                media_type=media_type,
-                use_assets=True,
+                photo=photo,
+                video=video,
+                document=document,
+                animation=animation,
             )
         else:
             raise

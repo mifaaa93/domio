@@ -2,6 +2,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery, Update, User as TgUser
 from typing import Callable, Dict, Any, Awaitable
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
 from db.session import get_async_session
 from db.models import User
 import datetime
@@ -56,10 +57,9 @@ class DBSessionMiddleware(BaseMiddleware):
 class UserActivityMiddleware(BaseMiddleware):
     """
     Middleware для автообновления пользователя:
-    - создаёт запись, если user не найден;
-    - обновляет username / first_name / last_nam
-    - обновляет last_active_at;
-    - сохраняет реферера при /start <ref_id>.
+    - создаёт запись, если user не найден (UPSERT)
+    - обновляет username / first_name / last_name / last_active_at
+    - сохраняет referrer при первом запуске
     """
 
     async def __call__(
@@ -70,12 +70,11 @@ class UserActivityMiddleware(BaseMiddleware):
     ) -> Any:
         session: AsyncSession | None = data.get("session")
         if not session:
-            # если по какой-то причине session нет — создаём временную
             async with get_async_session() as temp_sess:
                 data["session"] = temp_sess
                 session = temp_sess
 
-        # безопасно извлекаем Telegram-пользователя
+        # --- извлекаем Telegram-пользователя ---
         from_user: TgUser | None = getattr(event, "from_user", None)
         if not from_user:
             if isinstance(event, CallbackQuery):
@@ -89,59 +88,45 @@ class UserActivityMiddleware(BaseMiddleware):
                     from_user = event.callback_query.from_user
 
         if not from_user:
-            return await handler(event, data)  # нет юзера — пропускаем (например, system update)
+            return await handler(event, data)
 
         user_id = from_user.id
         username = from_user.username
         first_name = from_user.first_name
         last_name = from_user.last_name
+        now = datetime.datetime.now(datetime.timezone.utc)
 
-        # --- извлекаем ref_id из команды /start ref123 ---
+        # --- извлекаем ref_id из /start ---
         ref_id = None
-        if hasattr(event, "text") and event.text and event.text.startswith("/start"):
+        if isinstance(event, Message) and event.text and event.text.startswith("/start"):
             parts = event.text.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
                 ref_id = int(parts[1])
 
-        # --- достаём или создаём пользователя ---
-        user: User | None = await session.get(User, user_id)
-        now = datetime.datetime.now(datetime.timezone.utc)
+        # --- формируем UPSERT ---
+        stmt = insert(User).values(
+            id=user_id,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            registered_at=now,
+            last_active_at=now,
+            is_active=True,
+            referrer_id=ref_id if ref_id and ref_id != user_id else None,
+        ).on_conflict_do_update(
+            index_elements=[User.id],
+            set_={
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "last_active_at": now,
+                "is_active": True,
+            },
+        ).returning(User)
 
-        if not user:
-            referrer = None
-            if ref_id and ref_id != user_id:
-                referrer = await session.get(User, ref_id)
-
-            user = User(
-                id=user_id,
-                username=username,
-                first_name=first_name,
-                last_name=last_name,
-                registered_at=now,
-                last_active_at=now,
-                is_active=True,
-                referrer=referrer,
-            )
-            session.add(user)
-        else:
-            # обновляем при изменении
-            changed = False
-            if user.username != username:
-                user.username = username
-                changed = True
-            if user.first_name != first_name:
-                user.first_name = first_name
-                changed = True
-            if user.last_name != last_name:
-                user.last_name = last_name
-                changed = True
-            if not user.is_active:
-                user.is_active = True
-
-            user.last_active_at = now
-            if changed:
-                session.add(user)
-
+        result = await session.execute(stmt)
+        user = result.scalar_one()
         await session.commit()
-        data["user"] = user  # ✅ теперь гарантированно добавляется в handler
+
+        data["user"] = user
         return await handler(event, data)
