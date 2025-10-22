@@ -4,7 +4,7 @@ import logging
 import random
 import time
 from typing import Any, Dict, Optional
-from config import HTTP_TIMEOUT, HTTP_MAX_RETRIES, HTTP_RETRY_STATUSES, HTTP_BACKOFF_BASE
+from config import HTTP_TIMEOUT, HTTP_MAX_RETRIES, HTTP_RETRY_STATUSES, HTTP_BACKOFF_BASE, HTTP_SKEEP_STATUSES
 from config import PROXIES_POOL, PROXIES_HOST, PROXIES_PASS, PROXIES_PORT, PROXIES_USERNAME
 
 from curl_cffi import requests as crequests
@@ -60,7 +60,6 @@ def http_request(
     """
     _timeout = timeout if timeout is not None else HTTP_TIMEOUT
     _max_retries = max_retries if max_retries is not None else HTTP_MAX_RETRIES
-    _retry_statuses = retry_statuses if retry_statuses is not None else HTTP_RETRY_STATUSES
     last_exc: Optional[BaseException] = None
 
     for attempt in range(1, _max_retries + 1):
@@ -77,7 +76,7 @@ def http_request(
                 timeout=_timeout,
             )
             # 429/5xx — ретраим
-            if resp.status_code in _retry_statuses:
+            if resp.status_code in HTTP_RETRY_STATUSES:
                 logger.warning(
                     "HTTP %s %s -> %s (retryable), attempt %d/%d",
                     method, url, resp.status_code, attempt, _max_retries,
@@ -87,6 +86,9 @@ def http_request(
                     continue
                 resp.raise_for_status()
             # прочие статусы — сразу raise при необходимости (4xx и т.п.)
+            elif resp.status_code in HTTP_SKEEP_STATUSES:
+                last_exc = RuntimeError(f"Not found: {resp.status_code} {url}")
+                break
             resp.raise_for_status()
             return resp
 

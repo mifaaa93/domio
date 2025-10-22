@@ -18,6 +18,7 @@ CHECK_INTERVAL_HOURS = 2
 HTTP_TIMEOUT: int = 15           # сек
 HTTP_MAX_RETRIES: int = 3
 HTTP_RETRY_STATUSES = {429, 500, 502, 503, 504}
+HTTP_SKEEP_STATUSES = (404, )
 HTTP_BACKOFF_BASE: float = 1.0   # сек (экспоненциальный с джиттером)
 
 PROXIES_POOL: list[str] = [

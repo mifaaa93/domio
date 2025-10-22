@@ -48,7 +48,7 @@ def pets_child_comission_from_desc(desc: str | None, title: str | None) -> tuple
     if any(p in text for p in PETS_CHILD_PHRASE):
         pets_allowed = False
         child_allowed = False
-        return pets_allowed, child_allowed
+        return pets_allowed, child_allowed, no_comission
 
     # отдельно проверяем животных
     if any(p in text for p in PETS_PHRASE):

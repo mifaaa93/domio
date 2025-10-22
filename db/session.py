@@ -5,9 +5,30 @@ from contextlib import contextmanager, asynccontextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from config import SYNC_URL, ASYNC_URL
+import threading
+import weakref
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
+# --- глобальный кэш движков (по thread_id) ---
+_thread_engines = weakref.WeakValueDictionary()
+
+def get_sessionmaker_for_current_thread() -> async_sessionmaker[AsyncSession]:
+    """
+    Возвращает sessionmaker, уникальный для каждого потока.
+    Если движок ещё не создан — создаёт новый и сохраняет.
+    """
+    thread_id = threading.get_ident()
+    if thread_id not in _thread_engines:
+        engine = create_async_engine(
+            ASYNC_URL,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=10,
+        )
+        SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
+        _thread_engines[thread_id] = SessionLocal
+    return _thread_engines[thread_id]
 
 # --- sync ---
 sync_engine = create_engine(
@@ -31,18 +52,10 @@ def get_sync_session() -> Generator[Session, None, None]:
     finally:
         db.close()
 
-# --- async ---
-async_engine = create_async_engine(
-    ASYNC_URL,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
-AsyncSessionLocal = async_sessionmaker(bind=async_engine, expire_on_commit=False, class_=AsyncSession)
-
 @asynccontextmanager
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Асинхронный контекст для ручного управления commit/rollback."""
+    AsyncSessionLocal = get_sessionmaker_for_current_thread()
     async with AsyncSessionLocal() as session:
         try:
             yield session
