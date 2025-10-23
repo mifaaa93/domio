@@ -6,8 +6,49 @@ from bs4 import BeautifulSoup
 
 from sqlalchemy.orm import Session
 from db.repo import upsert_city_by_name_pl, upsert_district_by_name_pl
+import unicodedata
+from difflib import get_close_matches
 
-from config import CITIES_STR, PETS_PHRASE, CHILD_PHRASE, PETS_CHILD_PHRASE, NO_COMISSION_PHRASE
+from config import CITIES_STR, CITY_DISTRICTS, PETS_PHRASE, CHILD_PHRASE, PETS_CHILD_PHRASE, NO_COMISSION_PHRASE
+
+
+def normalize_district(
+        district_str: str | None,
+        possible_distr_list: tuple[str],
+        cutoff: float=0.7) -> str | None:
+    '''
+    тут нужно попытаться определить, попадает ли райно в список. 
+    '''
+    if not possible_distr_list:
+        return None
+    def _normalize(text: str) -> str:
+        # удаляем диакритику, пробелы, приводим к нижнему регистру
+        text = unicodedata.normalize("NFKD", text)
+        text = "".join(c for c in text if not unicodedata.combining(c))
+        text = text.lower().strip().replace("-", " ").replace(",", " ")
+        return " ".join(text.split())  # убрать двойные пробелы
+
+    # нормализованные формы
+    normalized_input = _normalize(district_str)
+    normalized_map = { _normalize(d): d for d in possible_distr_list }
+
+    # прямое совпадение (идеальное)
+    if normalized_input in normalized_map:
+        return normalized_map[normalized_input]
+
+    # частичное совпадение (например, "mokotow sadyba" → "mokotow")
+    for norm_name, orig_name in normalized_map.items():
+        if norm_name in normalized_input or normalized_input in norm_name:
+            return orig_name
+
+    # fuzzy-поиск (нечёткое сравнение)
+    matches = get_close_matches(normalized_input, normalized_map.keys(), n=1, cutoff=cutoff)
+    if matches:
+        return normalized_map[matches[0]]
+
+    return None
+    
+
 
 ROOMS_MAP = {
     "one": 1,
@@ -95,10 +136,13 @@ def map_olx_to_listing(
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
     district_id = None
-    district_name_pl: str = (loc.get("district") or {}).get("name")
+    district_str: str = (loc.get("district") or {}).get("name")
+    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
     if district_name_pl:
-        district_name_pl = district_name_pl.strip().title()
-        district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
+        district_id = upsert_district_by_name_pl(
+            session,
+            city_id=city_id,
+            name_pl=district_name_pl)
 
     address = None  # определим позже через GPT
 
@@ -236,9 +280,9 @@ def map_otodom_to_listing(
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
     district_id = None
-    district_name_pl = (addr.get("district") or {}).get("name")
+    district_str = (addr.get("district") or {}).get("name")
+    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
     if district_name_pl:
-        district_name_pl = district_name_pl.strip().title()
         district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
 
     # address (строковое поле модели) — положим улицу, если она есть
@@ -383,7 +427,8 @@ def map_morizon_to_listing(
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
     district_id = None
-    district_name_pl: str = offer.get("district")
+    district_str: str = offer.get("district")
+    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
     if district_name_pl:
         district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
 
@@ -463,7 +508,8 @@ def map_nieruch_to_listing(
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
     district_id = None
-    district_name_pl: str = offer.get("district")
+    district_str: str = offer.get("district")
+    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
     if district_name_pl:
         district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
 

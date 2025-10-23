@@ -62,6 +62,13 @@ async def send_or_edit_message(
     # --- редактирование ---
     if try_edit:
         try:
+            # ⚙️ если меняется тип клавиатуры — не редактируем
+            if msg.reply_markup and keyboard:
+                old_is_inline = isinstance(msg.reply_markup, InlineKeyboardMarkup)
+                new_is_inline = isinstance(keyboard, InlineKeyboardMarkup)
+                if old_is_inline != new_is_inline:
+                    raise ValueError("Keyboard type changed")
+
             if media_type and (file_id or media_file):
                 media_cls = {
                     "photo": InputMediaPhoto,
@@ -74,7 +81,8 @@ async def send_or_edit_message(
             else:
                 await msg.edit_text(caption, reply_markup=keyboard)
             return msg
-        except TelegramBadRequest as e:
+
+        except (TelegramBadRequest, ValueError) as e:
             logger.debug(f"Edit failed for {key} ({media_type}): {e}")
             try:
                 await msg.delete()

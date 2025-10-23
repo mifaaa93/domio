@@ -28,6 +28,25 @@ class City(Base):
         Index("ix_cities_name_pl", "name_pl"),
     )
 
+    def get_name_local(self, lang: str=None) -> str:
+        """
+        Возвращает название города в нужной локали, если оно есть.
+        Fallback-приоритет: lang → uk → pl → en.
+        """
+        if not lang:
+            lang = "uk"
+
+        match lang:
+            case "uk":
+                return self.name_uk or self.name_pl or self.name_en or self.id
+            case "pl":
+                return self.name_pl or self.name_uk or self.name_en or self.id
+            case "en":
+                return self.name_en or self.name_pl or self.name_uk or self.id
+            case _:
+                # fallback для неизвестного языка
+                return self.name_pl or self.name_uk or self.name_en or self.id
+
 
 class District(Base):
     __tablename__ = "districts"
@@ -43,6 +62,25 @@ class District(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     city: Mapped["City"] = relationship("City")
+
+    def get_name_local(self, lang: str=None) -> str:
+        """
+        Возвращает название города в нужной локали, если оно есть.
+        Fallback-приоритет: lang → uk → pl → en.
+        """
+        if not lang:
+            lang = "uk"
+
+        match lang:
+            case "uk":
+                return self.name_uk or self.name_pl or self.name_en or self.id
+            case "pl":
+                return self.name_pl or self.name_uk or self.name_en or self.id
+            case "en":
+                return self.name_en or self.name_pl or self.name_uk or self.id
+            case _:
+                # fallback для неизвестного языка
+                return self.name_pl or self.name_uk or self.name_en or self.id
 
     __table_args__ = (
         UniqueConstraint("city_id", "name_pl", name="uq_district_city_namepl"),
@@ -169,7 +207,13 @@ class User(Base):
         remote_side=[id],
         backref="referrals"
     )
-
+    # 🔹 дата до которой активна подписка
+    subscription_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="Дата и время окончания подписки пользователя (UTC)",
+    )
     __table_args__ = (
         Index("ix_users_is_active", "is_active"),
         Index("ix_users_registered_at", "registered_at"),
@@ -189,4 +233,68 @@ class FSMState(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+
+# --- таблица-связка ---
+class UserSearchDistrict(Base):
+    __tablename__ = "user_search_districts"
+
+    search_id: Mapped[int] = mapped_column(ForeignKey("user_searches.id", ondelete="CASCADE"), primary_key=True)
+    district_id: Mapped[int] = mapped_column(ForeignKey("districts.id", ondelete="CASCADE"), primary_key=True)
+
+    district: Mapped["District"] = relationship("District", overlaps="user_searches,districts")
+
+
+class UserSearch(Base):
+    __tablename__ = "user_searches"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user: Mapped["User"] = relationship("User", backref="searches")
+
+    deal_type: Mapped[str | None] = mapped_column(String(16))      # rent | sale
+    property_type: Mapped[str | None] = mapped_column(String(32))  # apartment | house | room
+    market: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    
+    city_id: Mapped[int | None] = mapped_column(ForeignKey("cities.id", ondelete="SET NULL"))
+    city: Mapped["City | None"] = relationship("City")
+
+    # 👇 связь many-to-many через промежуточную таблицу
+    districts: Mapped[list["District"]] = relationship(
+        "District",
+        secondary="user_search_districts",
+        backref="user_searches",
+        cascade="all, delete",
+        overlaps="district,user_search_districts",
+    )
+
+    # --- диапазоны ---
+    area_min: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    area_max: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    price_min: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    price_max: Mapped[float | None] = mapped_column(Numeric(12, 2))
+
+    # --- мультивыбор комнат ---
+    rooms: Mapped[list[int] | None] = mapped_column(JSONB)
+
+    pets_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    child_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    has_confirmed_policy: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_user_search_user_id", "user_id"),
+        Index("ix_user_search_city", "city_id"),
     )

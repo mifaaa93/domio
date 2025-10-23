@@ -20,7 +20,7 @@ async def start_cmd(msg: Message, session: AsyncSession, user: User, state: FSMC
     if user.language_code is None:
         await send_language_prompt(msg)
     else:
-        await send_main_menu(msg, user.language_code)
+        await send_main_menu(msg, user)
 
 
 @router.callback_query(F.data.startswith("lang_"))
@@ -31,7 +31,13 @@ async def choose_language(callback: CallbackQuery, session: AsyncSession, user: 
     session.add(user)
     await session.commit()
     
-    await send_language_set(callback, lang_code)
+    await send_language_set(callback, user)
     if prew_code is None:
-        await send_main_menu(callback, lang_code)
+        await send_main_menu(callback, user)
 
+
+
+@router.callback_query(F.data == "main_menu")
+async def goto_main_menu(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
+    
+    await send_main_menu(callback, user, try_edit=True)
