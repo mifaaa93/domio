@@ -261,49 +261,13 @@ def parse_nieruch_card(html: str, city_name: str, url: str) -> Dict:
     # --- Адрес: улица/район/город ---
     # 1) Верхняя строка под заголовком: ".title-b" (desktop) или <h2> под h1
     #    Пример: "Magiera, Bielany, Warszawa, mazowieckie"
-    street = None
+    address = None
     district = None
 
-    addr_line = None
-    tline = soup.select_one(".box-offer-up .title-b") or soup.select_one(".box-offer-top h2")
+    tline = soup.select_one("li.body-md.adress span") or soup.select_one(".box-offer-top h2.header-e, .box-offer-top h2")
     if tline:
-        addr_line = _clean_text(tline.get_text(" ", strip=True))
-    # 2) Раздел "Lokalizacja": первый <li class="adress">
-    #    "<a>Magiera</a>, <a>Bielany</a>, Warszawa, mazowieckie"
-    if not addr_line:
-        li_addr = soup.select_one("#locationTable #locationUl li.adress span")
-        if li_addr:
-            addr_line = _clean_text(li_addr.get_text(" ", strip=True))
-
-    # пробуем вынуть street/district из цепочки (обычно: Street, District, City, Region)
-    if addr_line:
-        parts = [p.strip().rstrip(",") for p in re.split(r",", addr_line) if p.strip()]
-        # street = первый токен, если это не город;
-        # district = второй токен, если есть и он не город
-        if parts:
-            # Street — чаще всего 1-й
-            if parts[0].lower() != (city_name or "").lower():
-                street = parts[0]
-            # District — чаще всего 2-й
-            if len(parts) >= 2 and parts[1].lower() not in ((city_name or "").lower(), (street or "").lower()):
-                district = parts[1]
-
-    # ещё точнее можно по ссылкам внутри li.adress:
-    li = soup.select_one("#locationTable #locationUl li.adress span")
-    if li:
-        links = li.find_all("a")
-        # по примерам: 1-я ссылка — улица; 2-я — район
-        if links:
-            # улица
-            st = _clean_text(links[0].get_text(" ", strip=True))
-            if st and st.lower() != (city_name or "").lower():
-                street = st
-            # район
-            if len(links) >= 2:
-                dist = _clean_text(links[1].get_text(" ", strip=True))
-                if dist and dist.lower() != (city_name or "").lower():
-                    district = dist
-
+        address = tline.text
+    
     # --- Описание ---
     # Короткая/развёрнутая части в #boxCustomDesc
     description = None
@@ -331,12 +295,14 @@ def parse_nieruch_card(html: str, city_name: str, url: str) -> Dict:
         "rooms": rooms,
         "district": district,
         "city": city_name,
-        "street": street,
+        "address": address,
         "market": market,
         "images": images or None,
         "external_url": None,
         "source_ad_id": source_ad_id,
     }
+
+
 def fetch_and_parse_card(url: str, *, city_name: str) -> Dict:
     r = http_get(url, headers=HEADERS, timeout=25)
     r.raise_for_status()

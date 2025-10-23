@@ -19,7 +19,7 @@ def normalize_district(
     '''
     тут нужно попытаться определить, попадает ли райно в список. 
     '''
-    if not possible_distr_list:
+    if not district_str or not possible_distr_list:
         return None
     def _normalize(text: str) -> str:
         # удаляем диакритику, пробелы, приводим к нижнему регистру
@@ -45,9 +45,18 @@ def normalize_district(
     matches = get_close_matches(normalized_input, normalized_map.keys(), n=1, cutoff=cutoff)
     if matches:
         return normalized_map[matches[0]]
-
     return None
     
+def extract_district(address: str, possible_distr_list: tuple[str]) -> str | None:
+    '''
+    '''
+    if not address or not possible_distr_list:
+        return None
+    
+    for district in possible_distr_list:
+        if district in address:
+            return district
+    return None
 
 
 ROOMS_MAP = {
@@ -226,6 +235,7 @@ def map_olx_to_listing(
         raw=offer,
     )
 
+
 def map_otodom_to_listing(
     session: Session,
     ad: Dict[str, Any],
@@ -287,7 +297,7 @@ def map_otodom_to_listing(
 
     # address (строковое поле модели) — положим улицу, если она есть
     street_name = (addr.get("street") or {}).get("name")
-    address = street_name.strip() if isinstance(street_name, str) and street_name.strip() else None
+    address = ','.join([el for el in [street_name, district_str, city_name_pl] if el])
 
     # ---------- цена / валюта ----------
     price = None
@@ -426,14 +436,13 @@ def map_morizon_to_listing(
     city_name_pl = offer.get("city")
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
+    address = offer.get("address")
+    district_name_pl = extract_district(address, CITY_DISTRICTS.get(city_name_pl))
     district_id = None
-    district_str: str = offer.get("district")
-    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
+
     if district_name_pl:
         district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
 
-    # Улица (как address в твоей модели)
-    address = offer.get("street") or None
 
     # --- Числа ---
     area_m2 = offer.get("area_m2")
@@ -507,13 +516,14 @@ def map_nieruch_to_listing(
     city_name_pl = offer.get("city")
     city_id = upsert_city_by_name_pl(session, name_pl=city_name_pl)
 
+    address = offer.get("address")
+    district_name_pl = extract_district(address, CITY_DISTRICTS.get(city_name_pl))
     district_id = None
-    district_str: str = offer.get("district")
-    district_name_pl = normalize_district(district_str, CITY_DISTRICTS.get(city_name_pl))
+
     if district_name_pl:
         district_id = upsert_district_by_name_pl(session, city_id=city_id, name_pl=district_name_pl)
 
-    address = offer.get("street") or None
+    
 
     # --- Числовые параметры ---
     def to_float(value):

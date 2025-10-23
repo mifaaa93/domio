@@ -68,10 +68,10 @@ def run_async_in_thread(coro_func, *args, **kwargs):
 def main():
     # словарь: имя -> (функция запуска, объект потока)
     thread_specs = {
-        "olx":      lambda: run_thread(lambda: start_olx(stop_event), "olx"),
+        #"olx":      lambda: run_thread(lambda: start_olx(stop_event), "olx"),
         "otodom":   lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
-        "morizon":  lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
-        "nieruch":  lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
+        #"morizon":  lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
+        #"nieruch":  lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
         #"bot":      lambda: run_async_in_thread(run_bot, stop_event),
         #"checker":  lambda: run_async_in_thread(check_actual_listings, stop_event),
     }

@@ -329,55 +329,13 @@ def parse_morizon_card(html: str, city_name: str, url: str) -> Dict:
 
     # ---------- Address: city/district/street ----------
     # ---------- Address: city/district/street ----------
-    district: Optional[str] = None
-    street: Optional[str] = None
+    address: Optional[str] = None
 
     # Новый адресный блок: цепочка <span> внутри .location-row__second_column h2
     loc_h2 = soup.select_one(".location-row__second_column h2")
     if loc_h2:
-        spans = loc_h2.select("span")
-        items = []
-        for sp in spans:
-            txt = sp.get_text(" ", strip=True).rstrip(",")
-            if not txt:
-                continue
-            cls = " ".join(sp.get("class") or [])
-            items.append((txt, cls))
-
-        if items:
-            # city = первый элемент по порядку
-            city_txt, _ = items[0]
-
-            # street = последний span с классом, содержащим 'VnDg-D' (как в твоём примере),
-            # иначе просто последний по списку
-            street_idx = None
-            for i in reversed(range(len(items))):
-                if "vndg-d" in items[i][1].lower():  # класс 'VnDg-D'
-                    street_idx = i
-                    break
-            if street_idx is None:
-                street_idx = len(items) - 1
-
-            street = items[street_idx][0]
-            if street and street.strip().lower() == (city_name or "").strip().lower():
-                street = None  # защита от совпадения
-
-            # district = любой элемент между city (индекс 0) и street_idx
-            # (если таких нет — значит район не указан)
-            if street_idx > 1:
-                # берём первый «средний» как район
-                candidate = items[1][0]
-                # страховка: не путать с улицей/городом
-                if candidate and candidate != street and candidate.lower() != (city_name or "").lower():
-                    district = candidate
-
-    # если не нашли — пробуем таблицы/списки характеристик
-    if not district or not street:
-        if not district:
-            for k in ("dzielnica", "osiedle", "rejon"):
-                if k in details and details[k]:
-                    district = details[k].strip()
-                    break
+        address = loc_h2.text
+        
 
 
     # ---------- Market (Rynek: primary/secondary) ----------
@@ -421,8 +379,8 @@ def parse_morizon_card(html: str, city_name: str, url: str) -> Dict:
         "rooms": rooms,
         "area_m2": area_m2,
         "city": city_name,
-        "district": district,
-        "street": street,
+        "district": None,
+        "address": address,
         "images": images,
         "url": url,
         "external_url": external_url,
