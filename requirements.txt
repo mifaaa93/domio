@@ -7,3 +7,10 @@ curl_cffi
 beautifulsoup4
 lxml
 aiogram>=3.7
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+gunicorn>=21.2
+orjson>=3.10
+python-multipart>=0.0.9
+httpx>=0.27
