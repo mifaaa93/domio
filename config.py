@@ -33,6 +33,7 @@ PROXIES_PASS = os.getenv("PROXIES_PASS")
 # максимальное число одновременных запросов
 MAX_CONCURRENT_CHECKS = len(PROXIES_POOL)
 
+METERS_LIST = (0, 20, 30, 40, 50, 60, 100, )
 
 CITIES_STR = (
     "Warszawa",
@@ -52,29 +53,29 @@ CITIES_STR_SALE = (
 
 CITY_DISTRICTS = {
     "Warszawa": [
-        "Bemowo", "Białołęka", "Bielany", "Mokotów", "Ochota",
+        "Centrum", "Bemowo", "Białołęka", "Bielany", "Mokotów", "Ochota",
         "Praga-Południe", "Praga-Północ", "Rembertów", "Śródmieście",
         "Targówek", "Ursus", "Ursynów", "Wawer", "Wesoła",
         "Wilanów", "Włochy", "Wola", "Żoliborz"
     ],
     "Kraków": [
-        "Stare Miasto", "Grzegórzki", "Prądnik Czerwony", "Prądnik Biały",
+        "Centrum", "Stare Miasto", "Grzegórzki", "Prądnik Czerwony", "Prądnik Biały",
         "Krowodrza", "Bronowice", "Zwierzyniec", "Dębniki",
         "Łagiewniki-Borek Fałęcki", "Swoszowice", "Podgórze Duchackie",
         "Bieżanów-Prokocim", "Podgórze", "Czyżyny", "Mistrzejowice",
         "Bieńczyce", "Wzgórza Krzesławickie", "Nowa Huta"
     ],
     "Łódź": [
-        "Bałuty", "Górna", "Polesie", "Śródmieście", "Widzew"
+        "Centrum", "Bałuty", "Górna", "Polesie", "Śródmieście", "Widzew"
     ],
     "Wrocław": [
-        "Fabryczna", "Krzyki", "Psie Pole", "Stare Miasto", "Śródmieście"
+        "Centrum", "Fabryczna", "Krzyki", "Psie Pole", "Stare Miasto", "Śródmieście"
     ],
     "Poznań": [
-        "Grunwald", "Jeżyce", "Nowe Miasto", "Stare Miasto", "Wilda"
+        "Centrum", "Grunwald", "Jeżyce", "Nowe Miasto", "Stare Miasto", "Wilda"
     ],
     "Gdańsk": [
-        "Aniołki", "Brętowo", "Brzeźno", "Chełm", "Jasień", "Kokoszki",
+        "Centrum", "Aniołki", "Brętowo", "Brzeźno", "Chełm", "Jasień", "Kokoszki",
         "Krakowiec-Górki Zachodnie", "Letnica", "Matarnia", "Młyniska",
         "Nowy Port", "Oliwa", "Olszynka", "Orunia-Św. Wojciech-Lipce",
         "Orunia Górna-Gdańsk Południe", "Osowa", "Piecki-Migowo",
@@ -85,10 +86,10 @@ CITY_DISTRICTS = {
         "Żabianka-Wejhera-Jelitkowo-Tysiąclecia"
     ],
     "Szczecin": [
-        "Północ", "Prawobrzeże", "Śródmieście", "Zachód"
+        "Centrum", "Północ", "Prawobrzeże", "Śródmieście", "Zachód"
     ],
     "Katowice": [
-        "Bogucice", "Brynów-Osiedle Zgrzebnioka", "Dąb", "Dąbrówka Mała",
+        "Centrum", "Bogucice", "Brynów-Osiedle Zgrzebnioka", "Dąb", "Dąbrówka Mała",
         "Giszowiec", "Janów-Nikiszowiec", "Kostuchna", "Koszutka",
         "Ligota-Panewniki", "Murcki", "Osiedle Paderewskiego-Muchowiec",
         "Osiedle Tysiąclecia", "Piotrowice-Ochojec", "Podlesie",

@@ -49,6 +49,7 @@ class City(Base):
 
 
 class District(Base):
+    
     __tablename__ = "districts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -281,7 +282,6 @@ class UserSearch(Base):
     pets_allowed: Mapped[bool | None] = mapped_column(Boolean)
     child_allowed: Mapped[bool | None] = mapped_column(Boolean)
     has_confirmed_policy: Mapped[bool] = mapped_column(Boolean, default=False)
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -298,3 +298,122 @@ class UserSearch(Base):
         Index("ix_user_search_user_id", "user_id"),
         Index("ix_user_search_city", "city_id"),
     )
+    
+
+    def get_str(self, lang: str) -> str:
+        """
+        Сводка запроса с локализацией: uk / pl / en.
+        Показывает:
+        - тип сделки, тип недвижимости (+ рынок, если sale)
+        - город и районы (если выбраны)
+        - площадь (от/до) и комнаты (если НЕ room)
+        - стоимость (от/до)
+        - наличие животных и детей (только для rent, если указано)
+        """
+        L = lang
+        if L not in ("uk", "pl", "en"):
+            L = "uk"
+
+        # ---- словари локализации ----
+        DEAL = {
+            "rent": {"uk": "Оренда", "pl": "Wynajem", "en": "Rent"},
+            "sale": {"uk": "Продаж", "pl": "Sprzedaż", "en": "Sale"},
+        }
+        PROP = {
+            "apartment": {"uk": "Квартира", "pl": "Mieszkanie", "en": "Apartment"},
+            "house":     {"uk": "Будинок",  "pl": "Dom",        "en": "House"},
+            "room":      {"uk": "Кімната",  "pl": "Pokój",      "en": "Room"},
+        }
+        MARKET = {
+            "primary":   {"uk": "первинний ринок", "pl": "rynek pierwotny",  "en": "primary market"},
+            "secondary": {"uk": "вторинний ринок", "pl": "rynek wtórny",     "en": "secondary market"},
+        }
+        LABEL = {
+            "deal":   {"uk": "Угода",      "pl": "Transakcja", "en": "Deal"},
+            "type":   {"uk": "Тип",        "pl": "Typ",        "en": "Type"},
+            "market": {"uk": "Ринок",      "pl": "Rynek",      "en": "Market"},
+            "city":   {"uk": "Місто",      "pl": "Miasto",     "en": "City"},
+            "dists":  {"uk": "Райони",     "pl": "Dzielnice",  "en": "Districts"},
+            "area":   {"uk": "Площа",      "pl": "Powierzchnia","en": "Area"},
+            "rooms":  {"uk": "Кімнат",     "pl": "Pokoje",     "en": "Rooms"},
+            "price":  {"uk": "Ціна",       "pl": "Cena",       "en": "Price"},
+            "pets":   {"uk": "Тварини",    "pl": "Zwierzęta",  "en": "Pets"},
+            "child":  {"uk": "Діти",       "pl": "Dzieci",     "en": "Children"},
+            "from":   {"uk": "від",        "pl": "od",         "en": "from"},
+            "to":     {"uk": "до",         "pl": "do",         "en": "to"},
+            "allowed":    {"uk": "дозволені",   "pl": "dozwolone",  "en": "allowed"},
+            "not_allowed":{"uk": "заборонені",  "pl": "niedozwolone","en": "not allowed"},
+        }
+
+        def loc(d: dict, key: str) -> str:
+            return (d.get(key) or {}).get(L) if isinstance(d.get(key), dict) else None
+
+        def fmt_num(x: float | int | None) -> str:
+            if x is None: return ""
+            try:
+                xi = int(x)
+                return str(xi) if xi == x else f"{float(x):.2f}".rstrip("0").rstrip(".")
+            except Exception:
+                return str(x)
+
+        def fmt_range(lo: float | None, hi: float | None, unit: str = "") -> str:
+            if lo is not None and hi is not None:
+                s = f"{fmt_num(lo)}–{fmt_num(hi)}"
+            elif lo is not None:
+                s = f"{LABEL['from'][L]} {fmt_num(lo)}"
+            elif hi is not None:
+                s = f"{LABEL['to'][L]} {fmt_num(hi)}"
+            else:
+                return ""
+            return f"{s}{(' ' + unit) if unit else ''}"
+
+        parts: list[str] = []
+
+        # --- 1) Сделка / Тип / Рынок (если sale) ---
+        if self.deal_type:
+            deal_txt = loc(DEAL, self.deal_type) or self.deal_type
+            parts.append(f"{LABEL['deal'][L]}: {deal_txt}")
+        if self.property_type:
+            prop_txt = loc(PROP, self.property_type) or self.property_type
+            parts.append(f"{LABEL['type'][L]}: {prop_txt}")
+        if self.deal_type == "sale" and self.market:
+            mkt_txt = loc(MARKET, self.market) or self.market
+            parts.append(f"{LABEL['market'][L]}: {mkt_txt}")
+
+        # --- 2) Город и районы ---
+        if self.city:
+            # В твоём коде есть city.get_name_local(lang) — используем его, если доступен
+            parts.append(f"{LABEL['city'][L]}: {self.city.get_name_local(L)}")
+
+        if self.districts:
+            names = [n for n in (d.get_name_local(L) for d in self.districts) if n]
+            if names:
+                parts.append(f"{LABEL['dists'][L]}: {', '.join(sorted(set(names)))}")
+
+        # --- 3) Площадь и комнаты ---
+        area_txt = fmt_range(self.area_min, self.area_max, "m²" if L in ("pl", "en") else "м²")
+        if area_txt:
+            parts.append(f"{LABEL['area'][L]}: {area_txt}")
+
+        if (self.property_type or "") != "room" and self.rooms:
+            # rooms хранится как список ints
+            try:
+                rooms_list = sorted(set(int(r) for r in self.rooms))
+                rooms_txt = ", ".join(str(r) for r in rooms_list)
+                parts.append(f"{LABEL['rooms'][L]}: {rooms_txt}")
+            except Exception:
+                pass
+
+        # --- 4) Стоимость ---
+        price_txt = fmt_range(self.price_min, self.price_max)  # без валюты, т.к. не хранится
+        if price_txt:
+            parts.append(f"{LABEL['price'][L]}: {price_txt}")
+
+        # --- 5) Pets / Children (только для аренды, и только если True) ---
+        if self.deal_type == "rent":
+            if self.pets_allowed is True:
+                parts.append(f"{LABEL['pets'][L]}: {LABEL['allowed'][L]}")
+            if self.child_allowed is True:
+                parts.append(f"{LABEL['child'][L]}: {LABEL['allowed'][L]}")
+        # Финальный многострочный текст
+        return "\n".join(parts) if parts else ""

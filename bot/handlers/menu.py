@@ -17,7 +17,7 @@ async def search_btn_press(msg: Message, session: AsyncSession, user: User, stat
     нажата кнопка поиск квартир
     """
     if user.language_code is None:
-        await send_language_prompt(msg)
+        await send_language_prompt(msg, user)
         return
 
     # передаем в search-цепочку (первая стадия выбора типа пошуку)

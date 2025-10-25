@@ -1,6 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from bot.texts import btn
-
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot.texts import btn, marker_ok
+from config import METERS_LIST
 from db.models import City, District
 
 
@@ -100,60 +101,233 @@ def get_market_type_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
-
 def get_select_city_keyboard(lang: str | None = None, cities: list[City] = []) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора города (по два в ряд)
     """
-    rows: list[list[InlineKeyboardButton]] = []
+    cities = cities or []
 
-    # группируем по 2 города в ряд
-    for i in range(0, len(cities), 2):
-        pair = cities[i:i + 2]
-        row = [
-            InlineKeyboardButton(
-                text=city.get_name_local(lang),
-                callback_data=f"select_city|{city.id}"
-            )
-            for city in pair
-        ]
-        rows.append(row)
+    builder = InlineKeyboardBuilder()
 
-    # кнопка "Назад"
-    rows.append([
+    for city in cities:
+        builder.button(
+            text=city.get_name_local(lang),
+            callback_data=f"select_city|{city.id}",
+        )
+
+    # упаковать по 2 в ряд
+    builder.adjust(2)
+
+    # кнопка "Назад" отдельной строкой
+    builder.row(
         InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|select_city")
-    ])
+    )
 
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    return builder.as_markup()
 
 
 def get_select_district_keyboard(
-        lang: str | None = None,
-        all_districts: list[District]=[],
-        selected_districts:  list[District]=[]) -> InlineKeyboardMarkup:
-    '''
-    '''
-    rows: list[list[InlineKeyboardButton]] = []
+    lang: str | None = None,
+    all_districts: list[District] | None = None,
+    selected_districts: list[District] | None = None
+) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора районов.
+    selected_districts — всегда список District.
+    """
+    all_districts = all_districts or []
+    selected_districts = selected_districts or []
 
-    # группируем по 2 города в ряд
-    per_row = 3
-    for i in range(0, len(all_districts), per_row):
-        pair = all_districts[i:i + per_row]
-        row = [
-            InlineKeyboardButton(
-                text=district.get_name_local(lang),
-                callback_data=f"select_city|{district.id}"
-            )
-            for district in pair
-        ]
-        rows.append(row)
+    # Быстрые проверки по id
+    selected_ids = {d.id for d in selected_districts}
 
-    rows.append([
-        InlineKeyboardButton(text=btn(lang, "all_district_btn"), callback_data="back_from|select_district")
-    ])
-    # кнопка "Назад"
-    rows.append([
+    builder = InlineKeyboardBuilder()
+
+    for district in all_districts:
+        title = (
+            f"{marker_ok} {district.get_name_local(lang)}"
+            if district.id in selected_ids
+            else district.get_name_local(lang)
+        )
+        builder.button(
+            text=title,
+            callback_data=f"select_district|{district.id}",
+        )
+
+    # по 3 в ряд (поменяй на 2/4 при желании)
+    builder.adjust(3)
+
+    # "Все районы"
+    builder.row(
+        InlineKeyboardButton(
+            text=btn(lang, "all_district_btn"),
+            callback_data="next_select_district|all",
+        )
+    )
+
+    # Назад / Далее
+    builder.row(
         InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|select_district"),
-        InlineKeyboardButton(text=btn(lang, "next"), callback_data="back_from|select_district")
-    ])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+        InlineKeyboardButton(text=btn(lang, "next"), callback_data="next_select_district|"),
+    )
+
+    return builder.as_markup()
+
+
+def get_area_from_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for meters in METERS_LIST:
+        builder.button(
+            text=btn(lang, "area_from_btn").format(meters=meters),
+            callback_data=f"area_from|{meters}",
+        )
+    # Упаковка по 2 в ряд (поменяй на 3 — будет по три в ряд)
+    builder.adjust(2)  # или builder.adjust(3)
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "any_area_btn"), callback_data="area_from|")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|area_from")
+    )
+    
+
+    return builder.as_markup()
+
+
+def get_area_to_keyboard(lang: str | None = None, min_area: int=0) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора максимальной площади
+    """
+    builder = InlineKeyboardBuilder()
+
+    for meters in METERS_LIST:
+        if meters > min_area:
+            builder.button(
+                text=btn(lang, "area_to_btn").format(meters=meters),
+                callback_data=f"area_to|{meters}",
+            )
+
+    # Упаковка по 2 в ряд (поменяй на 3 — будет по три в ряд)
+    builder.adjust(2)  # или builder.adjust(3)
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "any_area_btn"), callback_data="area_to|")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|area_to")
+    )
+
+    return builder.as_markup()
+
+
+def get_rooms_count_keyboard(lang: str | None = None, selected: list[int] = []) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора количества комнат
+    """
+    builder = InlineKeyboardBuilder()
+    selected = selected or []
+    for counter in range(1, 6):
+        if counter in selected:
+            text = f'{marker_ok} {btn(lang, f"rooms_count_btn{counter}")}'
+        else:
+            text = btn(lang, f"rooms_count_btn{counter}")
+        builder.button(
+                text=text,
+                callback_data=f"rooms_count|{counter}",
+            )
+    # Упаковка по 2 в ряд (поменяй на 3 — будет по три в ряд)
+    builder.adjust(2)  # или builder.adjust(3)
+
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|rooms_count"),
+        InlineKeyboardButton(text=btn(lang, "next"), callback_data="rooms_count|"),
+    )
+    
+
+    return builder.as_markup()
+
+
+def get_min_price_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """клавиатура при вводе минимальной стоимости цены"""
+    builder = InlineKeyboardBuilder()
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "any_price_btn"), callback_data="min_price|")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|min_price")
+    )
+    
+    return builder.as_markup()
+
+
+def get_max_price_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """клавиатура при вводе макс цены"""
+    builder = InlineKeyboardBuilder()
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "any_price_btn"), callback_data="max_price|")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|max_price")
+    )
+    
+    return builder.as_markup()
+
+
+def get_child_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """клавиатура выбора дети есть нету"""
+    builder = InlineKeyboardBuilder()
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "yes_btn"), callback_data="child|yes"),
+        InlineKeyboardButton(text=btn(lang, "no_btn"), callback_data="child|no")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|child")
+    )
+    
+    return builder.as_markup()
+
+def get_pets_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """клавиатура выбора дети есть нету"""
+    builder = InlineKeyboardBuilder()
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "yes_btn"), callback_data="pets|yes"),
+        InlineKeyboardButton(text=btn(lang, "no_btn"), callback_data="pets|no")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|pets")
+    )
+    
+    return builder.as_markup()
+
+
+def get_results_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """просмотра результатов"""
+    builder = InlineKeyboardBuilder()
+
+    # кнопка любой площади
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "result_btn"), callback_data="result")
+    )
+    # Кнопка "Назад" отдельной строкой
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "refresh_btn"), callback_data="back_from|market_type")
+    )
+    
+    return builder.as_markup()

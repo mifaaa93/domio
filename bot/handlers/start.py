@@ -4,7 +4,6 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import User
-from bot.states import LanguageStates
 from bot.utils.messages import *
 
 router = Router()
@@ -18,7 +17,7 @@ async def start_cmd(msg: Message, session: AsyncSession, user: User, state: FSMC
     - иначе — приветствие
     """
     if user.language_code is None:
-        await send_language_prompt(msg)
+        await send_language_prompt(msg, user)
     else:
         await send_main_menu(msg, user)
 

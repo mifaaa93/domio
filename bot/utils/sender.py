@@ -139,3 +139,12 @@ async def send_or_edit_message(
             raise
 
     return sent
+
+
+
+async def edit_btns(target: Union[Message, CallbackQuery], keyboard: InlineKeyboardMarkup = None) -> Message:
+    """
+    """
+    msg = target.message if isinstance(target, CallbackQuery) else target
+    await msg.edit_reply_markup(reply_markup=keyboard)
+    return msg

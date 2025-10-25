@@ -14,7 +14,7 @@ class PostgresFSMStorage(BaseStorage):
 
     async def set_state(self, key: StorageKey, state: str | State | None) -> None:
         # ✅ Преобразуем State в строку
-        state_str = str(state) if state else None
+        state_str = state.state if isinstance(state, State) else state
 
         async with get_async_session() as session:
             stmt = (
