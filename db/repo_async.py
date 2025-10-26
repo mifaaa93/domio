@@ -152,9 +152,9 @@ async def find_listings_by_search(
     #    False/None -> игнор
     if search.deal_type == "rent":
         if search.pets_allowed is True:
-            conditions.append(Listing.pets_allowed.is_(True))
+            conditions.append(Listing.pets_allowed.is_not(False))  # True или NULL
         if search.child_allowed is True:
-            conditions.append(Listing.child_allowed.is_(True))
+            conditions.append(Listing.child_allowed.is_not(False))  # True или NULL
 
     # Базовый SELECT
     stmt = (
@@ -279,20 +279,23 @@ async def find_searches_for_listing(
     )
 
     # pets/children: только для аренды; True у фильтра -> требуем True у листинга
+    # children
+    conds.append(
+        or_(
+            UserSearch.deal_type != "rent",
+            UserSearch.child_allowed.is_(None),   # фильтр не включён → не ограничиваем
+            UserSearch.child_allowed.is_(False),  # фильтр = False → не ограничиваем
+            Listing.child_allowed.is_not(False),  # фильтр = True → листинг НЕ False (True или NULL)
+        )
+    )
+
+    # pets
     conds.append(
         or_(
             UserSearch.deal_type != "rent",
             UserSearch.pets_allowed.is_(None),
             UserSearch.pets_allowed.is_(False),
-            Listing.pets_allowed.is_(True),
-        )
-    )
-    conds.append(
-        or_(
-            UserSearch.deal_type != "rent",
-            UserSearch.child_allowed.is_(None),
-            UserSearch.child_allowed.is_(False),
-            Listing.child_allowed.is_(True),
+            Listing.pets_allowed.is_not(False),   # True или NULL
         )
     )
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+  />
+  <title>Domio — Результаты</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Официальный SDK Telegram WebApp -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <main class="container">
+    <h1>Результаты поиска</h1>
+
+    <section class="card">
+      <div class="row"><strong>search_id:</strong> <span id="searchId">—</span></div>
+      <div class="row"><strong>total listings:</strong> <span id="total">…</span></div>
+    </section>
+
+    <p class="error" id="error" hidden></p>
+
+    <div class="actions">
+      <button class="btn" id="refreshBtn">Обновить</button>
+    </div>
+  </main>
+
+  <script>
+    window.BACKEND_URL = location.origin;
+  </script>
+  <script src="./app.js"></script>
+</body>
+</html>

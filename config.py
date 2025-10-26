@@ -29,7 +29,7 @@ PROXIES_HOST = "brd.superproxy.io"
 PROXIES_PORT = "33335"
 PROXIES_USERNAME = os.getenv("PROXIES_USERNAME")
 PROXIES_PASS = os.getenv("PROXIES_PASS")
-
+MINIAPP_URL = "https://764c19bd1311.ngrok-free.app/miniapp"
 # максимальное число одновременных запросов
 MAX_CONCURRENT_CHECKS = len(PROXIES_POOL)
 

@@ -1,7 +1,7 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.texts import btn, marker_ok
-from config import METERS_LIST
+from config import METERS_LIST, MINIAPP_URL
 from db.models import City, District
 
 
@@ -317,15 +317,17 @@ def get_pets_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_results_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+def get_results_keyboard(lang: str | None = None, search_id: int=None) -> InlineKeyboardMarkup:
     """просмотра результатов"""
     builder = InlineKeyboardBuilder()
+    url = f"{MINIAPP_URL.rstrip('/')}/result"
+    if search_id:
+        url += f"?search_id={search_id}"
 
-    # кнопка любой площади
     builder.row(
-        InlineKeyboardButton(text=btn(lang, "result_btn"), callback_data="result")
+        InlineKeyboardButton(text=btn(lang, "result_btn"), web_app=WebAppInfo(url=url))
     )
-    # Кнопка "Назад" отдельной строкой
+    # Кнопка заполнить фильтр заново
     builder.row(
         InlineKeyboardButton(text=btn(lang, "refresh_btn"), callback_data="back_from|market_type")
     )

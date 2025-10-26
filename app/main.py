@@ -1,23 +1,21 @@
-# app/main.py
-from typing import Annotated, Optional
-from fastapi import FastAPI, Depends, Query
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+# app\main.py
+from fastapi import FastAPI
+from starlette.staticfiles import StaticFiles  # ⬅️ добавили
+from app import miniapp, payments
 
-from app.deps import db_session_dep
-from db.models import Listing
-
-Db = Annotated[AsyncSession, Depends(db_session_dep)]
-
-app = FastAPI(title="Domio Listings Counter")
+app = FastAPI(title="Domio API")
 
 @app.get("/health")
 async def health():
     return {"ok": True}
 
-@app.get("/listings/count")
-async def listings_count(db: Db):
+app.mount(
+    "/miniapp/result",
+    StaticFiles(directory="miniapp/result", html=True),
+    name="miniapp-result",
+)
 
-    stmt = select(func.count()).select_from(Listing)
-    total = await db.scalar(stmt)
-    return {"total": int(total or 0)}
+# API-роутеры (как у тебя)
+app.include_router(miniapp.router, prefix="/api", tags=["miniapp"])
+app.include_router(payments.router, prefix="/payments", tags=["payments"])
+

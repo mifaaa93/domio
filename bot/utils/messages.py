@@ -305,7 +305,7 @@ async def show_results(
         key=key,
         lang=lang,
         text=t(lang, key).format(total=total, search=search_str),
-        keyboard=get_results_keyboard(lang),
+        keyboard=get_results_keyboard(lang, search.id),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
