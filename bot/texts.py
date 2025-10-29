@@ -265,6 +265,11 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "en": "No limit",
         "pl": "Bez ograniczeń"
     },
+    "any_rooms_count_btn": {
+        "uk": "Будь-яка кількість",
+        "en": "Any number",
+        "pl": "Dowolna liczba"
+    },
     "yes_btn": {
         "uk": "Так",
         "en": "Yes",

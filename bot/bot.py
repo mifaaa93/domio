@@ -11,6 +11,10 @@ from config import BOT_TOKEN
 
 logger = logging.getLogger("bot")
 
+sender_bot = Bot(
+        token=BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
 
 async def run_bot(stop_event: Event) -> None:
     """Асинхронный запуск бота с корректным завершением через threading.Event"""

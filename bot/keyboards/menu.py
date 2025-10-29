@@ -1,6 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.texts import btn, marker_ok
+from bot.utils.helpers import add_query_params
 from config import METERS_LIST, MINIAPP_URL
 from db.models import City, District
 
@@ -300,6 +301,7 @@ def get_child_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     
     return builder.as_markup()
 
+
 def get_pets_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     """клавиатура выбора дети есть нету"""
     builder = InlineKeyboardBuilder()
@@ -320,10 +322,12 @@ def get_pets_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
 def get_results_keyboard(lang: str | None = None, search_id: int=None) -> InlineKeyboardMarkup:
     """просмотра результатов"""
     builder = InlineKeyboardBuilder()
-    url = f"{MINIAPP_URL.rstrip('/')}/result"
-    if search_id:
-        url += f"?search_id={search_id}"
-
+    params = {
+        "type": "listing",
+        "search_id": search_id,
+        "lang": lang,
+        }
+    url = add_query_params(MINIAPP_URL, params)
     builder.row(
         InlineKeyboardButton(text=btn(lang, "result_btn"), web_app=WebAppInfo(url=url))
     )

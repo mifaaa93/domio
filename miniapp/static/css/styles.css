@@ -1,0 +1,348 @@
+@font-face {
+  font-family: 'Gilroy';
+  src: url('/miniapp/static/fonts/Gilroy-Regular.woff') format('woff');
+  font-weight: 400;
+   font-style: normal;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('/miniapp/static/fonts/Gilroy-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('/miniapp/static/fonts/Gilroy-ExtraBold.woff') format('woff');
+  font-weight: 800;
+  font-style: bold;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Основной стиль body */
+body {
+  position: relative;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  font-family: 'Gilroy';
+  font-size: 1rem;
+  line-height: 1.5;
+  color: white;
+
+  /* Убираем фон здесь, он будет через ::before */
+  background: none;
+  overflow-x: hidden;
+}
+
+/* Фиксированный фон через псевдоэлемент */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    linear-gradient(117.22deg, rgba(255, 225, 77, 0.24) 3.83%, rgba(22, 18, 14, 0.036) 50.37%, rgba(255, 193, 7, 0.24) 104.15%),
+    linear-gradient(117.22deg, #0E0E0E, #0E0E0E);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.container {
+  width: 85%;
+  margin: 0 auto;
+  padding: 20px 15px;
+}
+
+
+.logo {
+  display: block;
+  width: 25%;
+  margin: 70px auto 20px;
+}
+
+.main_logo {
+  display: block;
+  width: 50%;
+  margin: 40px auto 10px;
+}
+
+.arrow-down {
+  display: block;
+  width: 35%;
+  margin: 0 auto 0px;
+}
+
+.total-title {
+  color: white;
+  width: 100%;
+  font-size: 1.4em;
+  margin: 0 auto 0 auto; /* Центрирование по горизонтали */
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+
+.highlight-total {
+  background: linear-gradient(90deg, #FFE14D 0%, #FFC107 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.text-center {
+  text-align: center;
+}
+
+
+#apartments {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
+  background-color: rgba(255, 255, 255, 0); /* полупрозрачный белый */
+  border-radius: 8px;
+  box-shadow: none; /* убрано */
+  overflow: hidden;
+  backdrop-filter: blur(4px); /* для эффекта стекла, если хочется */
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.card.appeared {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.swiper-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.swiper-slide img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  display: none !important;
+}
+
+.swiper-slide-img-wrapper {
+  width: 100%;
+  aspect-ratio: 3 / 2; /* или 4 / 3, или 16 / 9 — как вам надо */
+  position: relative;
+  overflow: hidden;
+  background: #222; /* цвет подложки, пока фото грузится */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.swiper-slide-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* обрезает фото под контейнер, не растягивая */
+  display: block;
+}
+
+.swiper-slide-img-wrapper .swiper-zoom-container { width: 100%; height: 100%; }
+.swiper-slide-img-wrapper .swiper-zoom-target { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.swiper-zoom-container { cursor: zoom-in; }
+.swiper-zoom-container.zoomed { cursor: zoom-out; }
+
+.custom-swiper-btn img {
+  width: 100%;
+}
+
+.card-body {
+  padding: 0;
+}
+
+.card-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Центровка по вертикали */
+  flex-wrap: wrap; /* если вдруг не помещается на узких экранах */
+  gap: 10px;
+}
+
+.card-price {
+  font-weight: 700;
+  font-size: 1.7rem;
+}
+
+.card-address {
+  color: #43F094;
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin-top: 0.2rem;
+  width: 100%;
+}
+.card-city_distr {
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-top: 0.7rem;
+  width: 100%;
+}
+
+.card-base-info {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.card-comission-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.icon {
+  height: 1em;
+  width: auto;
+  margin-right: 0.2em;
+  vertical-align: middle;
+}
+
+
+.card-meta-row {
+  display: flex;
+  justify-content: space-between; /* первый слева, второй по центру, третий справа */
+  align-items: center;
+  width: 100%;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* flex: 1;  <- убрать */
+  white-space: nowrap; /* чтобы текст не переносился */
+}
+
+
+.card-text {
+  margin-top: 2rem;
+  white-space: pre-line; /* сохраняет переносы строк */
+  line-height: 1.5;
+  font-weight: 500;
+  font-size: 1em;
+}
+
+.description-container {
+  margin-bottom: 10px;
+}
+
+.description-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.4s ease, opacity 0.4s ease;
+}
+
+.description-text.expanded {
+  max-height: 2000px; /* или больше, если нужно */
+  opacity: 1;
+}
+.btn-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn {
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.0rem;
+  font-weight: 700;
+}
+
+.btn-outline-secondary {
+  border: 2px solid #43F094;
+  background: none;
+  color: #FFFFFF;
+  border-radius: 8px;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:active,
+.btn-outline-secondary.active {
+  background: none;
+  color: #FFFFFF;
+}
+
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 24px 0 32px;
+}
+
+.page-btn {
+  border: 1px solid #43F094;
+  background: none;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page-btn.active {
+  background: #43F094;
+  color: #000;
+  border-color: #43F094;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%; /* Критично важно */
+  margin-top: 1.5rem;
+}
+
+

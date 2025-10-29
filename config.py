@@ -9,8 +9,7 @@ ASYNC_URL = os.getenv("DATABASE_ASYNC_URL")
 
 BOT_TOKEN = os.getenv("DOMIO_BOT_TOKEN")
 ASSET_DIR = os.path.join("bot", "assets", "img")
-
-
+ADMIN_IDS = (480055341, 630186846, )
 
 
 parser_pause = 180 # как часто проверять новые 
@@ -29,7 +28,9 @@ PROXIES_HOST = "brd.superproxy.io"
 PROXIES_PORT = "33335"
 PROXIES_USERNAME = os.getenv("PROXIES_USERNAME")
 PROXIES_PASS = os.getenv("PROXIES_PASS")
-MINIAPP_URL = "https://764c19bd1311.ngrok-free.app/miniapp"
+DOMAIN = "https://48ddbbc471d2.ngrok-free.app"
+MINIAPP_URL = f"{DOMAIN}/miniapp/"
+UPAY_CALL_URL = f"{DOMAIN}/payments/"
 # максимальное число одновременных запросов
 MAX_CONCURRENT_CHECKS = len(PROXIES_POOL)
 

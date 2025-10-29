@@ -1,5 +1,17 @@
 import re
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+
+def add_query_params(url: str, params: dict) -> str:
+    # фильтруем None, чтобы не добавлять пустые ключи
+    params = {k: v for k, v in params.items() if v is not None}
+
+    scheme, netloc, path, query, frag = urlsplit(url)
+    q = dict(parse_qsl(query, keep_blank_values=True))
+    q.update(params)
+    new_query = urlencode(q, doseq=True)
+    return urlunsplit((scheme, netloc, path, new_query, frag))
+
 
 # Синонимы суффиксов
 _SUFFIX_ALIASES = [

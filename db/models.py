@@ -6,6 +6,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.associationproxy import association_proxy
 from time import time
 
 class Base(DeclarativeBase):
@@ -160,6 +161,20 @@ class Listing(Base):
     )
     city: Mapped[City] = relationship("City")
     district: Mapped[District | None] = relationship("District")
+    
+    saved_entries: Mapped[list["SavedListing"]] = relationship(
+        "SavedListing",
+        back_populates="listing",
+        passive_deletes=True,  # доверяем БД (ON DELETE CASCADE)
+    )
+
+    @property
+    def city_distr_location_str(self) -> str:
+        '''
+        локация (вместе со вшитой ссылкой на карты)
+        '''
+        return ", ".join([str(el) for el in [self.city_id, self.district_id] if el is not None])
+
 
     __table_args__ = (
         UniqueConstraint("source", "source_ad_id", name="uq_source_ad"),
@@ -215,11 +230,29 @@ class User(Base):
         index=True,
         comment="Дата и время окончания подписки пользователя (UTC)",
     )
+    saved_listing_objs: Mapped[list["SavedListing"]] = relationship(
+        "SavedListing", back_populates="user",
+        cascade="all, delete-orphan", passive_deletes=True,
+    )
+    saved_listings = association_proxy(
+        "saved_listing_objs", "listing",
+        creator=lambda listing: SavedListing(listing=listing),
+    )
+
     __table_args__ = (
         Index("ix_users_is_active", "is_active"),
         Index("ix_users_registered_at", "registered_at"),
         Index("ix_users_last_active_at", "last_active_at"),
     )
+    
+    @property
+    def subscribed(self) -> bool:
+        '''
+        возвращает тру если у юзера активна подписка
+        '''
+        if self.subscription_until is not None:
+            return self.subscription_until > datetime.now(timezone.utc)
+        return False
 
 
 class FSMState(Base):
@@ -417,3 +450,38 @@ class UserSearch(Base):
                 parts.append(f"{LABEL['child'][L]}: {LABEL['allowed'][L]}")
         # Финальный многострочный текст
         return "\n".join(parts) if parts else ""
+
+
+
+class SavedListing(Base):
+    __tablename__ = "saved_listings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # ↓ теперь NOT NULL + каскад
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="saved_listing_objs")
+    listing: Mapped["Listing"] = relationship("Listing", back_populates="saved_entries")
+
+    __table_args__ = (
+        # обычный уникальный (без partial)
+        UniqueConstraint("user_id", "listing_id", name="uq_saved_user_listing"),
+        Index("ix_saved_listings_user_created", "user_id", "created_at"),
+    )

@@ -9,10 +9,17 @@ app = FastAPI(title="Domio API")
 async def health():
     return {"ok": True}
 
+# 1) Статика: css/fonts/js/images
 app.mount(
-    "/miniapp/result",
-    StaticFiles(directory="miniapp/result", html=True),
-    name="miniapp-result",
+    "/miniapp/static",
+    StaticFiles(directory="miniapp/static"),
+    name="miniapp-static",
+)
+
+app.mount(
+    "/miniapp",
+    StaticFiles(directory="miniapp", html=True),
+    name="miniapp",
 )
 
 # API-роутеры (как у тебя)

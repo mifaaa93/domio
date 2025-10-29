@@ -4,6 +4,7 @@ from bot.texts import t
 from bot.keyboards.lang import get_language_keyboard
 from bot.keyboards.menu import *
 from aiogram.types import Message, CallbackQuery
+from aiogram import Bot
 from db.models import User, District, City, UserSearch
 
 
@@ -306,6 +307,27 @@ async def show_results(
         lang=lang,
         text=t(lang, key).format(total=total, search=search_str),
         keyboard=get_results_keyboard(lang, search.id),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def trigger_invoice(
+        target: Message | CallbackQuery=None,
+        user: User=None,
+        bot: Bot=None,
+        try_edit: bool=False) -> Message:
+    '''
+    '''
+    lang = user.language_code
+    key = "trigger_invoice"
+    return await send_or_edit_message(
+        target,
+        bot=bot,
+        key=key,
+        lang=lang,
+        text="Оплати підписку для початку",
+        keyboard=None,
         try_edit=try_edit,
         photo=get_image(lang, key)
     )

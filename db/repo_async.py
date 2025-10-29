@@ -4,7 +4,30 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_, exists
-from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict
+from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing
+
+
+async def get_user_by_token(session: AsyncSession, user_id: int) -> User | None:
+    '''
+    возвращает пользователя базы
+    '''
+    if user_id is None:
+        return None
+
+    # 1) Быстрый путь: по первичному ключу
+    user = await session.get(User, user_id)
+    return user
+
+
+async def get_listing_by_id(session: AsyncSession, base_id: int) -> Listing | None:
+    '''
+    '''
+    if base_id is None:
+        return None
+
+    # 1) Быстрый путь: по первичному ключу
+    listing = await session.get(Listing, base_id)
+    return listing
 
 
 async def get_user_search(session: AsyncSession, user: User) -> UserSearch:
@@ -62,7 +85,6 @@ async def get_districts(session: AsyncSession, city_id: int) -> list[District]:
 async def find_listings_by_search(
     session: AsyncSession,
     search: UserSearch,
-    *,
     limit: int = 50,
     offset: int = 0,
     return_total: bool = False,
@@ -127,23 +149,15 @@ async def find_listings_by_search(
     # 7) Комнаты (если это НЕ комната и список задан)
     if (search.property_type or "") != "room" and search.rooms:
         try:
-            rooms_set = {int(r) for r in search.rooms if r is not None}
-            if rooms_set:
-                has_5_plus = 5 in rooms_set
-                other_rooms = sorted(r for r in rooms_set if r != 5)
+            parts = []
+            for room in [int(r) for r in search.rooms if r is not None]:
+                parts.append(Listing.rooms == room)
+                if room == 5:
+                    parts.append(Listing.rooms > room)
 
-                room_cond = None
-                if other_rooms and has_5_plus:
-                    # (rooms IN other) OR (rooms >= 5)
-                    room_cond = or_(Listing.rooms.in_(other_rooms), Listing.rooms >= 5)
-                elif other_rooms:
-                    room_cond = Listing.rooms.in_(other_rooms)
-                elif has_5_plus:
-                    room_cond = Listing.rooms >= 5
-
-                if room_cond is not None:
-                    # Важно: у listing.rooms может быть NULL — такие записи не подходят под фильтр по комнатам
-                    conditions.append(and_(Listing.rooms.is_not(None), room_cond))
+            if parts:
+                parts.append(Listing.rooms.is_(None))
+                conditions.append(or_(*parts))
         except Exception:
             pass
 
@@ -155,7 +169,6 @@ async def find_listings_by_search(
             conditions.append(Listing.pets_allowed.is_not(False))  # True или NULL
         if search.child_allowed is True:
             conditions.append(Listing.child_allowed.is_not(False))  # True или NULL
-
     # Базовый SELECT
     stmt = (
         select(Listing)
@@ -183,9 +196,6 @@ async def find_listings_by_search(
 async def find_searches_for_listing(
     session: AsyncSession,
     listing: Listing,
-    *,
-    limit: int = 1000,
-    offset: int = 0,
     return_total: bool = False,
 ):
     """
@@ -307,8 +317,6 @@ async def find_searches_for_listing(
         )
         .where(*conds)
         .order_by(UserSearch.updated_at.desc(), UserSearch.id.desc())
-        .limit(limit)
-        .offset(offset)
     )
 
     searches = list(await session.scalars(stmt))
@@ -319,3 +327,66 @@ async def find_searches_for_listing(
     total_stmt = select(func.count()).select_from(UserSearch).where(*conds)
     total = await session.scalar(total_stmt)
     return searches, int(total or 0)
+
+async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
+    result = await session.scalars(
+        select(SavedListing.listing_id).where(SavedListing.user_id == user.id)
+    )
+    return result.all()
+
+
+async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str) -> list[dict]:
+    '''
+    for adv in qs[start:end]:
+        res.append({
+            "base_id": adv.base_id,
+            "description": adv.description,
+            "price": adv.price_str,
+            "city_distr": adv.city_distr_location_str,
+            "address": adv.address or '',
+            "floor": adv.floor or '',
+            "rooms": adv.number_of_rooms_string_from_int,
+            "total_floors": adv.total_floors or '',
+            "area": adv.total_area or '-',
+            "images": adv.all_photo_list,
+            "saved": adv.base_id in saved_ids,
+        })
+
+    return {
+        "results": res,
+        "total": total,
+        "has_next": total>end,
+        "cat": cat,
+        "total_page": (total + PER_PAGE - 1) // PER_PAGE}
+    '''
+    limit = 10
+    offset = limit*(page-1)
+    end = limit*page
+
+    search = await get_user_search(session, user)
+    res = []
+    total = 0
+    if search.has_confirmed_policy:
+        
+        data, total = await find_listings_by_search(session, search, limit, offset, return_total=True)
+        if total:
+            saved_ids = await get_saved_listing_ids(session, user)
+            for listing in data:
+                listing: Listing
+                res.append({
+                "base_id": listing.id,
+                "description": listing.description,
+                "price": listing.price,
+                "city_distr": listing.city_distr_location_str,
+                "address": listing.address or '',
+                "rooms": listing.rooms,
+                "area": listing.area_m2 or '-',
+                "images": listing.photos,
+                "saved": listing.id in saved_ids,
+            })
+    return {
+        "results": res,
+        "total": total,
+        "has_next": total>end,
+        "cat": cat,
+        "total_page": (total + limit - 1) // limit}
