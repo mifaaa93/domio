@@ -54,6 +54,7 @@ async def get_user_search(session: AsyncSession, user: User) -> UserSearch:
 
     return search
 
+
 async def get_cities(session: AsyncSession, str_names: tuple[str, ...]) -> list[City]:
     """
     Выбираем все города из базы, где name_pl входит в переданный список.
@@ -329,6 +330,7 @@ async def find_searches_for_listing(
     total_stmt = select(func.count()).select_from(UserSearch).where(*conds)
     total = await session.scalar(total_stmt)
     return searches, int(total or 0)
+
 
 async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
     result = await session.scalars(

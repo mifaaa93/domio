@@ -353,10 +353,8 @@ def make_round(last_ids: Dict[Tuple[str, str, str], set]) -> None:
                         )
                         if add_listing(session, listing):
                             total_added += 1
-                            session.commit()
                     except Exception:
                         logger.exception("nieruch: failed card %s", url, exc_info=False)
-                session.commit()
         logger.info("Added nieruchomosci-online adds %s", total_added)
     except Exception:
         logger.exception("make_round nieruch failed", exc_info=False)

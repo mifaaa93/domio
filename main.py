@@ -13,8 +13,8 @@ from parser.olx_parser import start_olx
 from parser.otodom_parser import start_otodom
 from parser.morizon_parser import start_morizone
 from parser.nieruch_parser import start_nieruch
-# from parser.actual_cheker import check_actual_listings  # если нужен асинхронный фон. чекер
-
+from parser.actual_cheker import check_actual_listings_sync  # если нужен асинхронный фон. чекер
+from parser.translater_w import start_translation
 # =======================
 # Логирование
 # =======================
@@ -42,6 +42,7 @@ logger_nieruch = make_logger("nieruchomosci", "parser_nieruchomosci.log")
 logger_net = make_logger("net", "net.log")
 logger_bot = make_logger("bot", "bot.log")
 logger_act = make_logger("actual", "actual.log")
+logger_trans = make_logger("translator", "translator.log")
 
 # =======================
 # Helpers: потоки
@@ -68,12 +69,12 @@ def build_thread_specs() -> dict[str, callable]:
     Каждая фабрика возвращает уже стартованный Thread.
     """
     return {
-        "olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
-        "otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
-        "morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
-        "nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
-        # если нужен синхронный checker — добавь здесь
-        # "checker": lambda: run_thread(lambda: sync_checker(stop_event), "checker"),
+        #"olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
+        #"otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
+        #"morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
+        #"nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
+        #"checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
+        "translator": lambda: run_thread(lambda: start_translation(stop_event), "translator"),
     }
 
 def start_threads(thread_specs: dict[str, callable]) -> dict[str, threading.Thread]:

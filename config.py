@@ -32,6 +32,9 @@ PROXIES_PASS = os.getenv("PROXIES_PASS")
 DOMAIN = "https://48ddbbc471d2.ngrok-free.app"
 MINIAPP_URL = f"{DOMAIN}/miniapp/"
 UPAY_CALL_URL = f"{DOMAIN}/payments/"
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # максимальное число одновременных запросов
 MAX_CONCURRENT_CHECKS = len(PROXIES_POOL)
 

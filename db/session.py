@@ -1,66 +1,81 @@
-# db\session.py
+# db/session.py
 from __future__ import annotations
 from typing import Generator, AsyncGenerator
 from contextlib import contextmanager, asynccontextmanager
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from config import SYNC_URL, ASYNC_URL
-import threading
-import weakref
-
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-# --- глобальный кэш движков (по thread_id) ---
-_thread_engines = weakref.WeakValueDictionary()
+from config import SYNC_URL, ASYNC_URL
 
-def get_sessionmaker_for_current_thread() -> async_sessionmaker[AsyncSession]:
-    """
-    Возвращает sessionmaker, уникальный для каждого потока.
-    Если движок ещё не создан — создаёт новый и сохраняет.
-    """
-    thread_id = threading.get_ident()
-    if thread_id not in _thread_engines:
-        engine = create_async_engine(
-            ASYNC_URL,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-        )
-        SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
-        _thread_engines[thread_id] = SessionLocal
-    return _thread_engines[thread_id]
-
-# --- sync ---
+# --- Sync engine / sessionmaker ---
 sync_engine = create_engine(
     SYNC_URL,
     pool_pre_ping=True,
-    pool_size=10,        # минимально: число потоков + запас
-    max_overflow=20,     # можно брать до 20 доп. соединений
-    pool_timeout=30,     # ожидание свободного коннекта
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    future=True,
 )
 SyncSessionLocal = sessionmaker(bind=sync_engine, expire_on_commit=False, class_=Session)
 
+# --- Async engine / sessionmaker ---
+async_engine = create_async_engine(
+    ASYNC_URL,
+    pool_pre_ping=True,
+    # pool_size/max_overflow работают с драйверами, где используется QueuePool;
+    # для aiosqlite — игнорируются, для asyncpg — применимы.
+)
+AsyncSessionLocal = async_sessionmaker(bind=async_engine, expire_on_commit=False, class_=AsyncSession)
+
+
+# -------- Sync helpers --------
 @contextmanager
 def get_sync_session() -> Generator[Session, None, None]:
+    """
+    Просто сессия без автокоммита.
+    Управляй транзакцией сам: session.begin()/commit()/rollback().
+    """
     db = SyncSessionLocal()
     try:
         yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
     finally:
         db.close()
 
+@contextmanager
+def get_sync_tx() -> Generator[Session, None, None]:
+    """
+    Сессия с АВТО транзакцией:
+    - begin до yield
+    - commit после yield
+    - rollback при ошибке
+    """
+    with get_sync_session() as db:
+        trans = db.begin()
+        try:
+            yield db
+            trans.commit()
+        except Exception:
+            trans.rollback()
+            raise
+
+
+# -------- Async helpers --------
 @asynccontextmanager
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """Асинхронный контекст для ручного управления commit/rollback."""
-    AsyncSessionLocal = get_sessionmaker_for_current_thread()
+    """
+    Просто async-сессия без автокоммита.
+    Управляй транзакцией сам: await session.commit()/rollback().
+    """
     async with AsyncSessionLocal() as session:
-        try:
+        yield session  # AsyncSession закрывается автоматически
+
+@asynccontextmanager
+async def get_async_tx() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Async-сессия с АВТО транзакцией (session.begin()).
+    """
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
             yield session
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()

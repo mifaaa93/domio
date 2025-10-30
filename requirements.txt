@@ -7,7 +7,7 @@ curl_cffi
 beautifulsoup4
 lxml
 aiogram>=3.7
-
+openai
 fastapi>=0.115
 uvicorn[standard]>=0.30
 gunicorn>=21.2

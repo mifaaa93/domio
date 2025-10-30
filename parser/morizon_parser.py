@@ -451,12 +451,10 @@ def make_round(last_ids: Dict[Tuple[str, str, str], set]) -> None:
                         )
                         if add_listing(session, listing_dict):
                             total += 1 
-                            session.commit()
                     except Exception:
                         logger.exception("morizon: failed card %s", url,
                                          exc_info=False)
 
-                session.commit()
         logger.info(f"Added morizon adds {total}")
     except Exception:
         logger.exception("make_round morizon failed", exc_info=False)

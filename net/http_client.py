@@ -31,14 +31,16 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(delay + jitter)
 
 
-async def fetch_status(url: str, headers: dict=None) -> int:
-    """"""
-    async with crequests.AsyncSession() as s:
-        r: crequests.models.Response = await s.get(
+# Если хочешь максимально просто (новая сессия на каждый вызов):
+def fetch_status_sync(url: str, headers: Optional[Dict] = None) -> int:
+    with crequests.Session() as s:
+        r = s.get(
             url,
             timeout=20,
             headers=headers,
-            proxies=_choose_proxy())
+            proxies=_choose_proxy(),  # твоя функция: {"http": "...", "https": "..."}
+            allow_redirects=True,
+        )
         return r.status_code
 
 
