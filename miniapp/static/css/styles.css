@@ -1,17 +1,16 @@
+/* === ФОНТЫ (не менял) === */
 @font-face {
   font-family: 'Gilroy';
   src: url('/miniapp/static/fonts/Gilroy-Regular.woff') format('woff');
   font-weight: 400;
-   font-style: normal;
+  font-style: normal;
 }
-
 @font-face {
   font-family: 'Gilroy';
   src: url('/miniapp/static/fonts/Gilroy-Bold.woff') format('woff');
   font-weight: 700;
   font-style: normal;
 }
-
 @font-face {
   font-family: 'Gilroy';
   src: url('/miniapp/static/fonts/Gilroy-ExtraBold.woff') format('woff');
@@ -19,6 +18,7 @@
   font-style: bold;
 }
 
+/* === БАЗОВОЕ === */
 html {
   scroll-behavior: smooth;
 }
@@ -26,16 +26,14 @@ html {
 /* Основной стиль body */
 body {
   position: relative;
-  min-height: 100dvh;
+  min-height: 100svh;      /* было 100dvh — свh лучше для мобилок */
   margin: 0;
   padding: 0;
   font-family: 'Gilroy';
   font-size: 1rem;
   line-height: 1.5;
   color: white;
-
-  /* Убираем фон здесь, он будет через ::before */
-  background: none;
+  background: none;        /* фон унесён в ::before */
   overflow-x: hidden;
 }
 
@@ -46,10 +44,9 @@ body::before {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100svh;
   z-index: -1;
   pointer-events: none;
-
   background:
     linear-gradient(117.22deg, rgba(255, 225, 77, 0.24) 3.83%, rgba(22, 18, 14, 0.036) 50.37%, rgba(255, 193, 7, 0.24) 104.15%),
     linear-gradient(117.22deg, #0E0E0E, #0E0E0E);
@@ -59,40 +56,36 @@ body::before {
 }
 
 .container {
-  width: 85%;
+  width: min(1100px, 85%);
   margin: 0 auto;
   padding: 20px 15px;
 }
 
-
 .logo {
   display: block;
-  width: 25%;
+  width: clamp(140px, 25%, 280px);
   margin: 70px auto 20px;
 }
-
 .main_logo {
   display: block;
-  width: 50%;
+  width: clamp(180px, 50%, 420px);
   margin: 40px auto 10px;
 }
-
 .arrow-down {
   display: block;
-  width: 35%;
-  margin: 0 auto 0px;
+  width: clamp(120px, 35%, 260px);
+  margin: 0 auto 0;
 }
 
 .total-title {
   color: white;
   width: 100%;
   font-size: 1.4em;
-  margin: 0 auto 0 auto; /* Центрирование по горизонтали */
+  margin: 0 auto;
   text-align: center;
   font-weight: 500;
   line-height: 1.3;
 }
-
 
 .highlight-total {
   background: linear-gradient(90deg, #FFE14D 0%, #FFC107 100%);
@@ -106,7 +99,7 @@ body::before {
   text-align: center;
 }
 
-
+/* === КАРТОЧКИ === */
 #apartments {
   display: flex;
   flex-direction: column;
@@ -114,16 +107,15 @@ body::before {
 }
 
 .card {
-  background-color: rgba(255, 255, 255, 0); /* полупрозрачный белый */
-  border-radius: 8px;
-  box-shadow: none; /* убрано */
+  background-color: rgba(255, 255, 255, 0);
+  border-radius: 16px;               /* было 8px — выровнял с фото */
+  box-shadow: none;
   overflow: hidden;
-  backdrop-filter: blur(4px); /* для эффекта стекла, если хочется */
+  backdrop-filter: blur(4px);
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
-
 .card.appeared {
   opacity: 1;
   transform: translateY(0);
@@ -133,7 +125,23 @@ body::before {
   width: 100%;
   overflow: hidden;
 }
-
+.swiper-slide-img-wrapper {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  position: relative;
+  overflow: hidden;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.swiper-slide-img-wrapper img,
+.swiper-slide-img-wrapper .swiper-zoom-target {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .swiper-slide img {
   width: 100%;
   height: auto;
@@ -146,26 +154,6 @@ body::before {
   display: none !important;
 }
 
-.swiper-slide-img-wrapper {
-  width: 100%;
-  aspect-ratio: 3 / 2; /* или 4 / 3, или 16 / 9 — как вам надо */
-  position: relative;
-  overflow: hidden;
-  background: #222; /* цвет подложки, пока фото грузится */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.swiper-slide-img-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* обрезает фото под контейнер, не растягивая */
-  display: block;
-}
-
-.swiper-slide-img-wrapper .swiper-zoom-container { width: 100%; height: 100%; }
-.swiper-slide-img-wrapper .swiper-zoom-target { width: 100%; height: 100%; object-fit: cover; display: block; }
-
 .swiper-zoom-container { cursor: zoom-in; }
 .swiper-zoom-container.zoomed { cursor: zoom-out; }
 
@@ -173,16 +161,22 @@ body::before {
   width: 100%;
 }
 
-.card-body {
-  padding: 0;
-}
+.card-body { padding: 0; }
 
 .card-info-row {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* Центровка по вертикали */
-  flex-wrap: wrap; /* если вдруг не помещается на узких экранах */
+  align-items: center;
+  flex-wrap: wrap;      /* чтобы не ломалось на узких экранах */
   gap: 10px;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;          /* критично */
+  margin-top: 1.5rem;
 }
 
 .card-price {
@@ -191,7 +185,7 @@ body::before {
 }
 
 .card-address {
-  color: #43F094;
+  color: #FFC107;
   font-weight: 700;
   font-size: 1.3rem;
   margin-top: 0.2rem;
@@ -224,42 +218,38 @@ body::before {
 .icon {
   height: 1em;
   width: auto;
-  margin-right: 0.2em;
   vertical-align: middle;
+  /* margin-right: 0.2em;  убрал, чтобы не дублировать с gap */
 }
-
 
 .card-meta-row {
   display: flex;
-  justify-content: space-between; /* первый слева, второй по центру, третий справа */
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;        /* без переносов — метки ровнее */
   width: 100%;
   margin-top: 1.5rem;
   font-size: 1rem;
   font-weight: 500;
   color: #fff;
 }
-
 .card-meta-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  /* flex: 1;  <- убрать */
-  white-space: nowrap; /* чтобы текст не переносился */
+  white-space: nowrap;
 }
-
 
 .card-text {
   margin-top: 2rem;
-  white-space: pre-line; /* сохраняет переносы строк */
+  white-space: pre-line;
   line-height: 1.5;
   font-weight: 500;
   font-size: 1em;
 }
 
-.description-container {
-  margin-bottom: 10px;
-}
+.description-container { margin-bottom: 10px; }
 
 .description-text {
   font-size: 1.1rem;
@@ -271,78 +261,105 @@ body::before {
   opacity: 0;
   transition: max-height 0.4s ease, opacity 0.4s ease;
 }
-
 .description-text.expanded {
-  max-height: 2000px; /* или больше, если нужно */
+  max-height: 2000px;
   opacity: 1;
 }
+
+/* === КНОПКИ === */
 .btn-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-top: 2rem;
 }
-
 .btn {
   padding: 0.5rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1.0rem;
+  font-size: 1rem;
   font-weight: 700;
 }
-
 .btn-outline-secondary {
-  border: 2px solid #43F094;
+  border: 2px solid #FFC107;
   background: none;
   color: #FFFFFF;
   border-radius: 8px;
+  transition: box-shadow .15s ease, transform .05s ease;
+}
+.btn-outline-secondary:hover {
+  box-shadow: 0 0 0 3px rgba(255,193,7,.2) inset;
+}
+.btn-outline-secondary:focus-visible {
+  outline: 3px solid rgba(255,193,7,.5);
+  outline-offset: 2px;
+}
+.btn-outline-secondary:active {
+  transform: translateY(1px);
 }
 
-.btn-outline-secondary:hover,
-.btn-outline-secondary:focus,
-.btn-outline-secondary:active,
-.btn-outline-secondary.active {
-  background: none;
-  color: #FFFFFF;
+/* === ПАГИНАЦИЯ === */
+/* пустой результат */
+.empty-state {
+  opacity: .8;
+  margin: 24px 0;
 }
 
-
-.pagination {
+/* контейнер пагинации */
+#pagination {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
   margin: 24px 0 32px;
 }
 
+/* .pagination (класс) был дубликатом — убран */
+
 .page-btn {
-  border: 1px solid #43F094;
+  border: 1px solid #FFC107;
   background: none;
   color: #fff;
   padding: 8px 12px;
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
+  transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
 }
-
+.page-btn:hover {
+  box-shadow: 0 0 0 3px rgba(255,193,7,.2) inset;
+}
+.page-btn:focus-visible {
+  outline: 3px solid rgba(255,193,7,.5);
+  outline-offset: 2px;
+}
+.page-btn:active {
+  transform: translateY(1px);
+}
 .page-btn.active {
-  background: #43F094;
+  background: #FFC107;
   color: #000;
-  border-color: #43F094;
+  border-color: #FFC107;
+}
+.page-btn:disabled,
+.page-btn[disabled] {
+  opacity: .5;
+  cursor: not-allowed;
 }
 
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+/* троеточие */
+.ellipsis {
+  opacity: .7;
+  padding: 8px 6px;
+  user-select: none;
 }
 
-
-.price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%; /* Критично важно */
-  margin-top: 1.5rem;
+/* === ПРЕДПОЧТЕНИЕ МЕНЬШЕ АНИМАЦИИ === */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
-
-

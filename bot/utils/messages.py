@@ -329,5 +329,6 @@ async def trigger_invoice(
         text="Оплати підписку для початку",
         keyboard=None,
         try_edit=try_edit,
-        photo=get_image(lang, key)
+        photo=get_image(lang, key),
+        chat_id=user.id
     )

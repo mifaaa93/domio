@@ -25,16 +25,26 @@
 
   </div>
 
-<script id="boot-cat" type="application/json">{{ cat|tojson }}</script>
+<!-- 1) NEW: read ?type & ?lang BEFORE your main script -->
 <script>
-  window.CAT = JSON.parse(document.getElementById('boot-cat').textContent);
+  (function initCatAndLangFromUrl() {
+    const qs = new URLSearchParams(location.search);
+    const typeFromUrl = (qs.get("type") || "listing").toLowerCase();
+    const langFromUrl = (qs.get("lang") || "uk").toLowerCase();
+    const SUP_LANGS = ["pl", "uk", "en"];
+    const safeLang = SUP_LANGS.includes(langFromUrl) ? langFromUrl : "uk";
+    // expose globals for script.js
+    window.CAT = typeFromUrl; // listing | saved | last_week | ...
+    window.APP_LANG = safeLang; // uk | ru | en
+    // set <html lang="...">
+    document.documentElement.setAttribute("lang", safeLang);
+  })();
 </script>
 
 <!-- Swiper JS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <!-- Custom JS -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
 <script src="/miniapp/static/js/script.js"></script>
 </body>
 </html>

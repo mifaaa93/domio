@@ -2,12 +2,126 @@
 let currentPage = 1;
 let totalPages = 1;
 let loading = false;
-const CAT = window.CAT ?? "";
+const CAT = (window.CAT || "listing").toLowerCase();
+const APP_LANG = (window.APP_LANG || "uk").toLowerCase();
 
 let tg, initData;
 let totalCountElem = null;
 
+/* ================== I18N ================== */
+const I18N = {
+  uk: {
+    apartment: "квартира",
+    house: "будинок",
+    room: "кімната",
+    remove: "Видалити",
+    save: "Зберегти",
+    no_commission: "без комісії",
+    commission: "комісія",
+    on_map: "На карті",
+    contact: "Зв’язок",
+    more: "Детальніше",
+    hide: "Згорнути",
+    no_photo: "Без фото",
+    nothing_found: "Нічого не знайдено",
+    ad_removed: "Оголошення було видалене",
+    link_unavailable: "Посилання недоступне",
+    no_subscription_title: "У тебе немає підписки",
+    no_subscription_msg:
+      "Для доступу до контактів треба оформити підписку Domio",
+    pay_action: "Оформити",
+    cancel_action: "Скасувати",
+    pay_called_try_close: "Оплата викликана, намагаюся закрити WebApp",
+    pay_failed: "Не вдалося викликати оплату",
+    user_cancelled: "Користувач скасував оплату.",
+    load_error: "Помилка завантаження оголошень",
+    save_error: "Помилка при збереженні",
+    // Заголовки:
+    title_last_week: "об’єкти, додані за останній тиждень",
+    title_saved: "збережені об’єкти",
+    title_found: "за твоїми фільтрами знайдено об’єкти без комісії",
+    // Единицы
+    area_unit: "м²",
+    // Debug/варнинги
+    not_in_tg: "Не в Telegram WebApp або не завантажено telegram-web-app.js",
+  },
+  en: {
+    apartment: "apartment",
+    house: "house",
+    room: "room",
+    remove: "Remove",
+    save: "Save",
+    no_commission: "no commission",
+    commission: "commission",
+    on_map: "On map",
+    contact: "Contact",
+    more: "More",
+    hide: "Hide",
+    no_photo: "No photo",
+    nothing_found: "Nothing found",
+    ad_removed: "The listing was removed",
+    link_unavailable: "Link is unavailable",
+    no_subscription_title: "No subscription",
+    no_subscription_msg:
+      "To access contacts, please subscribe to Domio",
+    pay_action: "Subscribe",
+    cancel_action: "Cancel",
+    pay_called_try_close: "Payment triggered, trying to close WebApp",
+    pay_failed: "Failed to trigger payment",
+    user_cancelled: "User canceled payment.",
+    load_error: "Failed to load listings",
+    save_error: "Error while saving",
+    // Titles:
+    title_last_week: "properties added in the last week",
+    title_saved: "saved properties",
+    title_found: "properties without commission found by your filters",
+    // Units
+    area_unit: "m²",
+    // Warnings
+    not_in_tg: "Not in Telegram WebApp or telegram-web-app.js not loaded",
+  },
+  pl: {
+    apartment: "mieszkanie",
+    house: "dom",
+    room: "pokój",
+    remove: "Usuń",
+    save: "Zapisz",
+    no_commission: "bez prowizji",
+    commission: "prowizji",
+    on_map: "Na mapie",
+    contact: "Kontakt",
+    more: "Więcej",
+    hide: "Zwiń",
+    no_photo: "Brak zdjęcia",
+    nothing_found: "Nic nie znaleziono",
+    ad_removed: "Ogłoszenie zostało usunięte",
+    link_unavailable: "Link niedostępny",
+    no_subscription_title: "Brak subskrypcji",
+    no_subscription_msg:
+      "Aby uzyskać dostęp do kontaktów, wykup subskrypcję Domio",
+    pay_action: "Wykup",
+    cancel_action: "Anuluj",
+    pay_called_try_close: "Płatność wywołana, próbuję zamknąć WebApp",
+    pay_failed: "Nie udało się wywołać płatności",
+    user_cancelled: "Użytkownik anulował płatność.",
+    load_error: "Błąd ładowania ogłoszeń",
+    save_error: "Błąd zapisu",
+    // Tytuły:
+    title_last_week: "nieruchomości dodane w ostatnim tygodniu",
+    title_saved: "zapisane nieruchomości",
+    title_found: "według Twoich filtrów znaleziono nieruchomości bez prowizji",
+    // Jednostki
+    area_unit: "m²",
+    // Ostrzeżenia
+    not_in_tg: "Nie w Telegram WebApp albo nie załadowano telegram-web-app.js",
+  },
+};
 
+function t(key) {
+  const lang = I18N[APP_LANG] ? APP_LANG : "uk";
+  return (I18N[lang] && I18N[lang][key]) ?? (I18N.uk[key] ?? key);
+}
+/* ================== /I18N ================== */
 
 // Передаём pageTag внутрь карточки!
 function renderApartment(a, pageTag) {
@@ -18,9 +132,11 @@ function renderApartment(a, pageTag) {
   const index = `${a.base_id}`;
 
   const isSaved = a.saved === true;
-  const saveText = isSaved ? 'Видалити' : 'Зберегти';
+  const saveText = isSaved ? t('remove') : t('save');
   const saveIcon = isSaved ? '/miniapp/static/images/remove.png' : '/miniapp/static/images/save.png';
   const mapq = [a.city_distr, a.address].filter(Boolean).join(', ');
+  const commissionText = a.no_comission ? t('no_commission') : t('commission');
+  const propertyType = a.property_type ? t(a.property_type) : "";
   col.innerHTML = `
     <div class="swiper swiper-container" id="swiper-${pageTag}-${index}">
       <div class="swiper-wrapper">
@@ -38,7 +154,7 @@ function renderApartment(a, pageTag) {
               <div class="swiper-slide">
                 <div class="swiper-slide-img-wrapper">
                   <div class="swiper-zoom-container">
-                    <img class="swiper-zoom-target" src="https://via.placeholder.com/600x400?text=Без+фото" alt="Без фото">
+                    <img class="swiper-zoom-target" src="https://via.placeholder.com/600x400?text=${encodeURIComponent(t('no_photo'))}" alt="${t('no_photo')}">
                   </div>
                 </div>
               </div>`
@@ -59,7 +175,7 @@ function renderApartment(a, pageTag) {
           <span class="card-price">${a.price}</span>
           <div class="card-comission-info">
             <img src="/miniapp/static/images/percent.png" class="icon" alt="">
-            <span>без комісії</span>
+            <span>${commissionText}</span>
           </div>
         </div>
         <span class="card-address">${a.address}</span>
@@ -72,15 +188,20 @@ function renderApartment(a, pageTag) {
         <img src="/miniapp/static/images/rooms.png" class="icon" alt="">
         <span>${a.rooms}</span>
       </div>
+      ${propertyType ? `
+      <div class="card-meta-item">
+        <img src="/miniapp/static/images/type.png" class="icon" alt="">
+        <span>${propertyType}</span>
+      </div>` : ""}
       <div class="card-meta-item">
         <img src="/miniapp/static/images/area.png" class="icon" alt="">
-        <span>${a.area} м²</span>
+        <span>${a.area} ${t('area_unit')}</span>
       </div>
     </div>
 
     <div class="btn-row">
       <button class="btn btn-sm btn-outline-secondary" onclick="openMap('${mapq}')">
-        На карті <img src="/miniapp/static/images/map.png" class="icon" alt="">
+        ${t('on_map')} <img src="/miniapp/static/images/map.png" class="icon" alt="">
       </button>
 
       <button class="btn btn-sm btn-outline-secondary save-btn" 
@@ -93,11 +214,11 @@ function renderApartment(a, pageTag) {
       <button class="btn btn-sm btn-outline-secondary"
               data-id="${a.base_id}" 
               onclick="openContact(this)">
-        Зв’язок <img src="/miniapp/static/images/contact.png" class="icon" alt="">
+        ${t('contact')} <img src="/miniapp/static/images/contact.png" class="icon" alt="">
       </button>
 
       <button class="btn btn-sm btn-outline-secondary" onclick="toggleDescription('desc-${pageTag}-${index}', this)">
-        Детальніше <img src="/miniapp/static/images/more.svg" class="icon" alt="">
+        ${t('more')} <img src="/miniapp/static/images/more.svg" class="icon" alt="">
       </button>
     </div>
 
@@ -157,8 +278,7 @@ function toggleDescription(id, btn) {
   const isExpanded = desc.classList.contains("expanded");
   const iconPath = isExpanded ? "/miniapp/static/images/hide.svg" : "/miniapp/static/images/more.svg";
 
-  btn.innerHTML = `Детальніше <img src="${iconPath}" class="icon" alt="">`;
-
+  btn.innerHTML = `${isExpanded ? t('hide') : t('more')} <img src="${iconPath}" class="icon" alt="">`;
 }
 
 
@@ -169,25 +289,22 @@ function openMap(address) {
 }
 
 
-function triggerInvoice(initData, base_id) {
-
-  response = fetch('/api/trigger_invoice', {
+async function triggerInvoice(initData, base_id) {
+  const response = await fetch('/api/trigger_invoice', {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Telegram-Init-Data": tg.initData
     },
     body: JSON.stringify({
-      init_data: initData,
-      check_data: tg.initData}),
-    
+      lang: APP_LANG
+    }),
   });
   return response;
 }
 
 
 async function openContact(btn) {
-
   const id = btn.dataset.id;
   try {
     const response = await fetch(`/api/get_link`, {
@@ -197,7 +314,8 @@ async function openContact(btn) {
         "X-Telegram-Init-Data": tg.initData
       },
       body: JSON.stringify({
-        base_id: id,
+        base_id: Number(id),
+        lang: APP_LANG
       })
     });
 
@@ -207,10 +325,9 @@ async function openContact(btn) {
     }
 
     if (response.status === 410) {
-      // Удаляем карточку из DOM
       const card = document.getElementById(`apartment-${id}`);
       if (card) card.remove();
-      alert("Оголошення було видалене")
+      alert(t('ad_removed'));
       return;
     }
 
@@ -219,9 +336,8 @@ async function openContact(btn) {
       const url = data.url;
       if (url) {
         tg.openLink(url);
-        //window.open(url, "_blank");
       } else {
-        alert("Посилання недоступне");
+        alert(t('link_unavailable'));
       }
     } else {
       console.error(`Unexpected response: ${response.status}`);
@@ -239,12 +355,14 @@ async function toggleSave(btn) {
   try {
     const response = await fetch(`/api/toggle_save`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": tg.initData},
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": tg.initData
+      },
       body: JSON.stringify({
-        init_data: initData,
-        base_id: id,
+        base_id: Number(id),
         action: action,
-        check_data: tg.initData
+        lang: APP_LANG
       })
     });
 
@@ -254,10 +372,9 @@ async function toggleSave(btn) {
     }
 
     if (response.status === 410) {
-      // Удаляем карточку из DOM
       const card = document.getElementById(`apartment-${id}`);
       if (card) card.remove();
-      alert("Оголошення було видалене");
+      alert(t('ad_removed'));
       return;
     }
 
@@ -268,13 +385,13 @@ async function toggleSave(btn) {
 
     // Успешный ответ, обновляем кнопку
     btn.dataset.saved = (!isSaved).toString();
-    btn.innerHTML = (!isSaved ? 'Видалити' : 'Зберегти') +
+    btn.innerHTML = (!isSaved ? t('remove') : t('save')) +
       ` <img src="${!isSaved
         ? '/miniapp/static/images/remove.png'
         : '/miniapp/static/images/save.png'}" class="icon" alt="">`;
 
   } catch (error) {
-    console.error("Ошибка при сохранении:", error);
+    console.error(t('save_error') + ":", error);
   }
 }
 
@@ -282,11 +399,11 @@ async function toggleSave(btn) {
 function showPaymentPopup(baseId) {
   window.lastBaseIdForInvoice = baseId;
   tg.showPopup({
-    title: "У тебе немає підписки",
-    message: "Для доступу до контактів треба оформити підписку Findly: тестову за 1 грн на 7 днів або місячну за 249 грн.",
+    title: t('no_subscription_title'),
+    message: t('no_subscription_msg'),
     buttons: [
-      { id: "pay", type: "default", text: "Оформити" },
-      { id: "cancel", type: "destructive", text: "Скасувати" }
+      { id: "pay", type: "default", text: t('pay_action') },
+      { id: "cancel", type: "destructive", text: t('cancel_action') }
     ]
   });
 }
@@ -295,20 +412,18 @@ function setTitle(total = null) {
   const el = document.getElementById('total-title');
   if (!el) return;
 
-  // текст в зависимости от CAT
   let baseText;
   if (CAT === 'last_week') {
-    baseText = 'квартири, додані за останній тиждень';
+    baseText = t('title_last_week');
   } else if (CAT === 'saved') {
-    baseText = 'збережені квартири';
+    baseText = t('title_saved');
   } else {
-    baseText = 'за твоїми фільтрами знайдено квартир без комісії';
+    baseText = t('title_found');
   }
 
-  // если total ещё не знаем — рисуем без числа
   if (total == null) {
     el.innerHTML = `${baseText}`;
-    totalCountElem = null; // пока нет
+    totalCountElem = null;
   } else {
     el.innerHTML = `${baseText}: <span id="total-count" class="highlight-total">${total}</span>`;
     totalCountElem = document.getElementById('total-count');
@@ -323,10 +438,14 @@ async function loadPage(p = 1, { scrollToCards = true } = {}) {
   try {
     const response = await fetch(`/api/apartments`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": tg.initData},
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": tg.initData
+      },
       body: JSON.stringify({
-        page: p,
+        page: Number(p),
         cat: CAT,
+        lang: APP_LANG
       })
     });
 
@@ -341,29 +460,28 @@ async function loadPage(p = 1, { scrollToCards = true } = {}) {
     totalPages = Number(data.total_page) || 1;
 
     if (p === 1 && typeof data.total === "number") {
-      setTitle(data.total); // дорисовали число
+      setTitle(data.total);
     }
 
     container.innerHTML = "";
     if (Array.isArray(data.results) && data.results.length) {
-      data.results.forEach(item => renderApartment(item, p)); // <-- передаём p!
+      data.results.forEach(item => renderApartment(item, p));
     } else {
-      container.innerHTML = `<div class="text-center" style="opacity:.8;margin:24px 0">Нічого не знайдено</div>`;
+      container.innerHTML = `<div class="text-center empty-state">${t('nothing_found')}</div>`;
     }
 
     currentPage = p;
     renderPagination();
-    // Прокрутка к первой карточке
     if (scrollToCards) {
       const firstCard = document.querySelector("#apartments .card");
       if (firstCard) {
-        const y = firstCard.getBoundingClientRect().top + window.pageYOffset - 40; // небольшой отступ
+        const y = firstCard.getBoundingClientRect().top + window.pageYOffset - 40;
         window.scrollTo({ top: y, behavior: "smooth" });
       }
     }
 
   } catch (err) {
-    console.error("Помилка завантаження оголошень:", err);
+    console.error(t('load_error') + ":", err);
   } finally {
     loading = false;
   }
@@ -386,53 +504,49 @@ function renderPagination() {
   html += `<button class="page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""}>‹</button>`;
 
   if (start > 1) {
-    html += `<button class="page-btn" data-page="1">1</button>`;
-    if (start > 2) html += `<span style="opacity:.7;padding:8px 6px">…</span>`;
+    html += `<button class="page-btn" data-page="1" type="button">1</button>`;
+    if (start > 2) html += `<span class="ellipsis">…</span>`;
   }
 
   for (let i = start; i <= end; i++) {
-    html += `<button class="page-btn ${i === currentPage ? "active" : ""}" data-page="${i}">${i}</button>`;
+    html += `<button class="page-btn ${i === currentPage ? "active" : ""}" data-page="${i}" type="button">${i}</button>`;
   }
 
   if (end < totalPages) {
-    if (end < totalPages - 1) html += `<span style="opacity:.7;padding:8px 6px">…</span>`;
-    html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    if (end < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+    html += `<button class="page-btn" data-page="${totalPages}" type="button">${totalPages}</button>`;
   }
 
-  html += `<button class="page-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? "disabled" : ""}>›</button>`;
-
+  html += `<button class="page-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? "disabled" : ""} type="button">›</button>`;
   el.innerHTML = html;
 }
 
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!window.Telegram || !Telegram.WebApp) {
-    console.warn('Не в Telegram WebApp или не загружен telegram-web-app.js');
+    console.warn(t('not_in_tg'));
     return;
   }
   tg = Telegram.WebApp;
   initData = tg.initDataUnsafe;
-
+  console.log(APP_LANG, CAT)
   tg.expand();
 
   tg.onEvent('popupClosed', (eventData) => {
-
     if (eventData.button_id === 'pay') {
       triggerInvoice(initData, window.lastBaseIdForInvoice)
         .then(() => {
-          console.log("Оплата вызвана, пытаюсь закрыть WebApp");
+          console.log(t('pay_called_try_close'));
           tg.close();
         })
         .catch((err) => {
-          console.error("Не вдалося викликати оплату:", err);
+          console.error(t('pay_failed') + ":", err);
         });
     } else if (eventData.button_id === 'cancel') {
-      // Можно закрыть popup или просто ничего не делать
-      console.log("Користувач скасував оплату.");
+      console.log(t('user_cancelled'));
     }
   });
 
-  // делегирование кликов по пагинации
   const pag = document.getElementById("pagination");
   if (pag) {
     pag.addEventListener("click", (e) => {
@@ -444,7 +558,5 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // первичная загрузка
-  
   loadPage(1, { scrollToCards: false });
 });

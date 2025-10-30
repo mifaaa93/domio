@@ -28,6 +28,7 @@ async def send_or_edit_message(
     video: Optional[str] = None,
     document: Optional[str] = None,
     animation: Optional[str] = None,
+    chat_id: int=None
 ) -> Message:
     """
     Универсальная функция для отправки/редактирования сообщений Telegram.
@@ -39,7 +40,7 @@ async def send_or_edit_message(
 
     # --- контекст ---
     msg = target.message if isinstance(target, CallbackQuery) else target
-    chat_id = msg.chat.id
+    chat_id = msg.chat.id if msg else chat_id
     bot = bot or msg.bot
     caption = text or ""
 

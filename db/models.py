@@ -314,6 +314,8 @@ class UserSearch(Base):
 
     pets_allowed: Mapped[bool | None] = mapped_column(Boolean)
     child_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    no_comission: Mapped[bool | None] = mapped_column(Boolean, default=True)
+
     has_confirmed_policy: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

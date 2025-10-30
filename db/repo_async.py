@@ -169,6 +169,8 @@ async def find_listings_by_search(
             conditions.append(Listing.pets_allowed.is_not(False))  # True или NULL
         if search.child_allowed is True:
             conditions.append(Listing.child_allowed.is_not(False))  # True или NULL
+    if search.no_comission:
+        conditions.append(Listing.no_comission.is_(True))
     # Базовый SELECT
     stmt = (
         select(Listing)
@@ -335,7 +337,7 @@ async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
     return result.all()
 
 
-async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str) -> list[dict]:
+async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str, lang: str=None) -> list[dict]:
     '''
     for adv in qs[start:end]:
         res.append({
@@ -350,6 +352,8 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
             "area": adv.total_area or '-',
             "images": adv.all_photo_list,
             "saved": adv.base_id in saved_ids,
+            "no_comission": listing.no_comission,
+            "property_type": listing.property_type
         })
 
     return {
@@ -362,27 +366,31 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
     limit = 10
     offset = limit*(page-1)
     end = limit*page
-
+    lang = lang or user.language_code or 'uk'
     search = await get_user_search(session, user)
     res = []
     total = 0
     if search.has_confirmed_policy:
-        
         data, total = await find_listings_by_search(session, search, limit, offset, return_total=True)
         if total:
             saved_ids = await get_saved_listing_ids(session, user)
             for listing in data:
                 listing: Listing
+                city_name = listing.city.get_name_local(lang) if listing.city else ""
+                distr_name = listing.district.get_name_local(lang) if listing.district else ""
+                city_distr = ", ".join([p for p in (city_name, distr_name) if p])
                 res.append({
                 "base_id": listing.id,
                 "description": listing.description,
-                "price": listing.price,
-                "city_distr": listing.city_distr_location_str,
-                "address": listing.address or '',
-                "rooms": listing.rooms,
+                "price": f"{listing.price:.0f} PLN" if listing.price else '-',
+                "city_distr": city_distr,
+                "address": listing.address or city_distr,
+                "rooms": listing.rooms or '-',
                 "area": listing.area_m2 or '-',
                 "images": listing.photos,
                 "saved": listing.id in saved_ids,
+                "no_comission": listing.no_comission,
+                "property_type": listing.property_type
             })
     return {
         "results": res,
