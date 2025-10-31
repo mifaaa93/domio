@@ -1,10 +1,13 @@
 # db/repo.py
 from __future__ import annotations
+from datetime import datetime, timezone
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, or_, and_, exists
+from sqlalchemy import select, func, or_, and_, exists, update, text
 from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing
+from db.models import ScheduledMessage, ScheduledStatus, MessageType, ChatType
 
 
 async def get_user_by_token(session: AsyncSession, user_id: int) -> User | None:
@@ -312,6 +315,9 @@ async def find_searches_for_listing(
         )
     )
 
+    if not listing.no_comission:
+        conds.append(UserSearch.no_comission.is_not(True))
+
     stmt = (
         select(UserSearch)
         .options(
@@ -332,6 +338,39 @@ async def find_searches_for_listing(
     return searches, int(total or 0)
 
 
+
+async def get_users_for_listing(session: AsyncSession, listing: Listing) -> list[User]:
+    """
+    Возвращает уникальных пользователей, чьи фильтры подходят под listing,
+    только активных (User.is_active == True).
+    """
+    if not listing:
+        return []
+
+    searches = await find_searches_for_listing(session, listing)
+    if not searches:
+        return []
+
+    user_ids = {s.user_id for s in searches if s.user_id}
+    if not user_ids:
+        return []
+
+    users: list[User] = []
+    ids_list = list(user_ids)
+    chunk_size = 1000
+
+    for i in range(0, len(ids_list), chunk_size):
+        chunk = ids_list[i:i + chunk_size]
+        result = await session.scalars(
+            select(User)
+            .where(User.id.in_(chunk), User.is_active.is_(True))
+            .order_by(User.id.asc())
+        )
+        users.extend(result.all())
+
+    return users
+    
+
 async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
     result = await session.scalars(
         select(SavedListing.listing_id).where(SavedListing.user_id == user.id)
@@ -340,6 +379,7 @@ async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
 
 
 async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str, lang: str=None) -> list[dict]:
+
     '''
     for adv in qs[start:end]:
         res.append({
@@ -383,7 +423,7 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
                 city_distr = ", ".join([p for p in (city_name, distr_name) if p])
                 res.append({
                 "base_id": listing.id,
-                "description": listing.description,
+                "description": listing.get_description_local(lang),
                 "price": f"{listing.price:.0f} PLN" if listing.price else '-',
                 "city_distr": city_distr,
                 "address": listing.address or city_distr,
@@ -400,3 +440,147 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
         "has_next": total>end,
         "cat": cat,
         "total_page": (total + limit - 1) // limit}
+
+
+
+async def schedule_message(
+    session: AsyncSession,
+    message_type: MessageType,
+    chat_type: ChatType,
+    payload: dict[str, Any],
+    send_at: datetime=None,
+    user_id: Optional[int] = None,
+    chat_id: Optional[int] = None,
+    priority: int = 0,
+    dedup_key: Optional[str] = None,
+    max_attempts: int = 5,
+) -> ScheduledMessage:
+    """
+    Поставить в очередь одно сообщение.
+    Если dedup_key задан и уже есть запись с тем же ключом — кину IntegrityError (лови снаружи)
+    или сделай upsert на уровне вызова по необходимости.
+    """
+    send_at = send_at or datetime.now(timezone.utc)
+    msg = ScheduledMessage(
+        user_id=user_id,
+        chat_id=chat_id,
+        chat_type=chat_type,
+        message_type=message_type,
+        priority=priority,
+        send_at=send_at,
+        payload=payload or {},
+        status=ScheduledStatus.QUEUED,
+        max_attempts=max_attempts,
+        dedup_key=dedup_key,
+    )
+    session.add(msg)
+    await session.commit()
+    await session.refresh(msg)
+    return msg
+
+async def claim_due_messages(
+    session: AsyncSession,
+    *,
+    worker_id: str,
+    now: Optional[datetime] = None,
+    limit: int = 50,
+) -> list[ScheduledMessage]:
+    """
+    Захватывает готовые к отправке сообщения (status=queued, send_at<=now),
+    проставляет locked_by/locked_at и переводит в CLAIMED.
+    Использует SELECT ... FOR UPDATE SKIP LOCKED для конкурентных воркеров.
+    """
+    now = now or datetime.now(timezone.utc)
+
+    # 1) Выбираем id задач, которые пора делать
+    subq = (
+        select(ScheduledMessage.id)
+        .where(
+            ScheduledMessage.status == ScheduledStatus.QUEUED,
+            ScheduledMessage.send_at <= now,
+        )
+        .order_by(ScheduledMessage.priority.desc(), ScheduledMessage.send_at.asc(), ScheduledMessage.id.asc())
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+
+    ids = list(await session.scalars(subq))
+    if not ids:
+        return []
+
+    # 2) Обновляем их атомарно
+    await session.execute(
+        update(ScheduledMessage)
+        .where(ScheduledMessage.id.in_(ids))
+        .values(
+            status=ScheduledStatus.CLAIMED,
+            locked_by=worker_id,
+            locked_at=func.now(),
+        )
+    )
+    await session.commit()
+
+    # 3) Возвращаем полные записи
+    result = await session.scalars(
+        select(ScheduledMessage)
+        .options(selectinload(ScheduledMessage.user))
+        .where(ScheduledMessage.id.in_(ids))
+        .order_by(ScheduledMessage.priority.desc(), ScheduledMessage.id.asc())
+    )
+    return list(result)
+
+async def mark_sending(session: AsyncSession, msg_id: int):
+    await session.execute(
+        update(ScheduledMessage)
+        .where(ScheduledMessage.id == msg_id)
+        .values(status=ScheduledStatus.SENDING)
+    )
+    await session.commit()
+
+async def mark_sent(session: AsyncSession, msg_id: int):
+    await session.execute(
+        update(ScheduledMessage)
+        .where(ScheduledMessage.id == msg_id)
+        .values(status=ScheduledStatus.SENT)
+    )
+    await session.commit()
+
+async def mark_retry(
+    session: AsyncSession, msg_id: int, *, last_error: Optional[str] = None
+):
+    """
+    Увеличивает attempts. Если attempts достиг max_attempts — переводит в FAILED.
+    Иначе возвращает в QUEUED (можно добавить backoff на send_at при желании).
+    """
+    # Получим текущее состояние
+    row = await session.get(ScheduledMessage, msg_id)
+    if not row:
+        return
+    attempts = (row.attempts or 0) + 1
+    new_status = ScheduledStatus.FAILED if attempts >= (row.max_attempts or 5) else ScheduledStatus.QUEUED
+
+    values = {
+        "attempts": attempts,
+        "status": new_status,
+        "last_error": last_error,
+        "locked_by": None,
+        "locked_at": None,
+    }
+    # простой backoff: +60 сек * attempts
+    if new_status == ScheduledStatus.QUEUED:
+        values["send_at"] = func.now() + text(f"interval '{60 * attempts} seconds'")
+
+    await session.execute(
+        update(ScheduledMessage)
+        .where(ScheduledMessage.id == msg_id)
+        .values(**values)
+    )
+    await session.commit()
+
+async def cancel_message(session: AsyncSession, msg_id: int):
+    await session.execute(
+        update(ScheduledMessage)
+        .where(ScheduledMessage.id == msg_id, ScheduledMessage.status.in_([ScheduledStatus.QUEUED, ScheduledStatus.CLAIMED]))
+        .values(status=ScheduledStatus.CANCELED)
+    )
+    await session.commit()

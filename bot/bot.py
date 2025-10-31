@@ -1,3 +1,5 @@
+# bot\bot.py
+
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
@@ -8,13 +10,12 @@ from db.fsm_storage import PostgresFSMStorage
 from bot.middlewares import DBSessionMiddleware, UserActivityMiddleware, PrivateChatOnlyMiddleware
 from bot.handlers import start, menu, search
 from config import BOT_TOKEN
+from bot.workers import newsletter_worker
+import contextlib
+
 
 logger = logging.getLogger("bot")
 
-sender_bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
 
 async def run_bot(stop_event: Event) -> None:
     """Асинхронный запуск бота с корректным завершением через threading.Event"""
@@ -42,18 +43,32 @@ async def run_bot(stop_event: Event) -> None:
 
     logger.info("🤖 Bot started polling...")
 
-    # Запускаем polling и параллельно ждём стоп-сигнала
+    # --- общий asyncio-сигнал для graceful shutdown воркеров ---
+    shutdown_event = asyncio.Event()
+
     try:
         polling_task = asyncio.create_task(dp.start_polling(bot))
+        worker_task = asyncio.create_task(newsletter_worker(bot, shutdown_event))
+
         loop = asyncio.get_running_loop()
         # ждём, пока stop_event будет установлен в другом потоке
         await loop.run_in_executor(None, stop_event.wait)
-        logger.info("🛑 Stop event received — shutting down bot...")
+        logger.info("🛑 Stop event received — shutting down bot & workers...")
+
+        # сигнализируем воркерам на остановку
+        shutdown_event.set()
+
+        # отменяем polling (он сам корректно закроет диспетчер)
         polling_task.cancel()
-        try:
+        # ждём задачи (воркер может ещё доправить пачку, если вы так решите)
+        with contextlib.suppress(asyncio.CancelledError):
             await polling_task
-        except asyncio.CancelledError:
-            pass
+
+        # воркер завершаем мягко
+        worker_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await worker_task
+
     except Exception as e:
         logger.exception(f"💥 Bot crashed: {e}")
     finally:

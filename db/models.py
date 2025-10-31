@@ -2,12 +2,17 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
     String, Integer, BigInteger, Numeric, Boolean, DateTime, Text, ForeignKey,
-    Index, UniqueConstraint, CheckConstraint, Computed
+    Index, UniqueConstraint, CheckConstraint, Computed, text
 )
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy import Enum as SAEnum
+from enum import Enum
 from time import time
+from typing import Any, Optional
+
+
 
 class Base(DeclarativeBase):
     pass
@@ -174,7 +179,72 @@ class Listing(Base):
         локация (вместе со вшитой ссылкой на карты)
         '''
         return ", ".join([str(el) for el in [self.city_id, self.district_id] if el is not None])
+    
 
+    @property
+    def first_photo(self) -> str:
+        '''
+        '''
+        if self.photos:
+            return self.photos[0]
+        return None
+
+
+    def new_variant_text(self, lang: str='uk') -> str:
+        '''
+        🏠 Нова квартира знайдена!
+        Domio щойно знайшов для тебе свіжу пропозицію напряму від власника 👇
+
+        📍 Місто: [місто]
+        💰 Ціна: [ціна]
+        📏 Площа: [площа]
+        🛏 Кімнат: [кількість]
+        📄 Опис: [короткий опис оголошення]
+        '''
+        res = '🏠 Нова квартира знайдена!\n'
+        res += 'Domio щойно знайшов для тебе свіжу пропозицію напряму від власника 👇\n\n'
+        return res
+    
+    def get_title_local(self, lang: str=None) -> str:
+        """
+        Возвращает название, если оно есть.
+        Fallback-приоритет: lang → uk → pl → en.
+        """
+        if not lang:
+            lang = "uk"
+
+        match lang:
+            case "uk":
+                return self.title_uk or self.title or self.title_en
+            case "pl":
+                return self.title or self.title_uk or self.title_en
+            case "en":
+                return self.title_en or self.title or self.title_uk
+            case _:
+                # fallback для неизвестного языка
+                return self.title or self.title_uk or self.title_en
+    
+    def get_description_local(self, lang: str=None, max_l:int=None) -> str:
+        """
+        Возвращает название описание, если оно есть.
+        Fallback-приоритет: lang → uk → pl → en.
+        """
+        if not lang:
+            lang = "uk"
+        res = None
+        match lang:
+            case "uk":
+                res = self.description_uk or self.description or self.description_en
+            case "pl":
+                res = self.description or self.description_uk or self.description_en
+            case "en":
+                res = self.description_en or self.description or self.description_uk
+            case _:
+                # fallback для неизвестного языка
+                res = self.description or self.description_uk or self.description_en
+        if res and max_l:
+            return res[:max_l] + '...'
+        return res
 
     __table_args__ = (
         UniqueConstraint("source", "source_ad_id", name="uq_source_ad"),
@@ -189,7 +259,6 @@ class Listing(Base):
         Index("ix_listings_property_type", "property_type"),
         Index("ix_listings_price", "price"),
     )
-
 
 
 class User(Base):
@@ -454,7 +523,6 @@ class UserSearch(Base):
         return "\n".join(parts) if parts else ""
 
 
-
 class SavedListing(Base):
     __tablename__ = "saved_listings"
 
@@ -487,3 +555,80 @@ class SavedListing(Base):
         UniqueConstraint("user_id", "listing_id", name="uq_saved_user_listing"),
         Index("ix_saved_listings_user_created", "user_id", "created_at"),
     )
+
+from sqlalchemy import Enum as SAEnum
+
+class MessageType(str, Enum):
+    REMINDER = "reminder"
+    BROADCAST = "broadcast"
+    CUSTOM = "custom"
+    INVOICE = "invoice"
+
+class ChatType(str, Enum):
+    PRIVATE = "private"
+    CHANNEL = "channel"
+
+class ScheduledStatus(str, Enum):
+    QUEUED = "queued"
+    CLAIMED = "claimed"
+    SENDING = "sending"
+    SENT = "sent"
+    FAILED = "failed"
+    CANCELED = "canceled"
+
+
+class ScheduledMessage(Base):
+    __tablename__ = "scheduled_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user: Mapped[Optional["User"]] = relationship("User", lazy="joined")
+
+    chat_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+
+    # ⬇️ Храним как TEXT + CHECK, без нативного PG ENUM:
+    chat_type: Mapped[ChatType] = mapped_column(
+        SAEnum(ChatType, name="chat_type", native_enum=False, create_constraint=True),
+        nullable=False,
+    )
+
+    message_type: Mapped[MessageType] = mapped_column(
+        SAEnum(MessageType, name="message_type", native_enum=False, create_constraint=True),
+        nullable=False,
+    )
+
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+
+    send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
+    status: Mapped[ScheduledStatus] = mapped_column(
+        SAEnum(ScheduledStatus, name="scheduled_status", native_enum=False, create_constraint=True),
+        nullable=False,
+        server_default=text("'queued'"),  # ❗ теперь без ::scheduled_status
+    )
+
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("5"))
+
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    locked_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    locked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    dedup_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    idempotent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+
+    __table_args__ = (
+        Index("ix_sched_status_sendat_prio", "status", "send_at", "priority"),
+        Index("ix_sched_user", "user_id"),
+        Index("ix_sched_chat", "chat_id"),
+        Index(
+            "uq_sched_dedup_key_not_null",
+            dedup_key,
+            unique=True,
+            postgresql_where=(dedup_key.is_not(None)),  # <- partial unique
+        ),
+)

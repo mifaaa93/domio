@@ -1,12 +1,29 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ChatMemberUpdated
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import User
+from db.repo_async import get_user_by_token
 from bot.utils.messages import *
 
 router = Router()
+
+@router.my_chat_member()
+async def block_unblock_bot(chat_member: ChatMemberUpdated, session: AsyncSession):
+    '''
+    юзер блокирует бота
+    '''
+    if not chat_member.from_user:
+        return  # Нет данных о пользователе — пропускаем
+    status = chat_member.new_chat_member.status
+    new_status = status not in ("left", "kicked")
+    user = await get_user_by_token(session, chat_member.from_user.id)
+    if user is None:
+        return
+    if user.is_active != new_status:
+        user.is_active = new_status
+        await session.commit()
 
 
 @router.message(F.text == "/start")

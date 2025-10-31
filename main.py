@@ -31,10 +31,11 @@ def make_logger(name: str, filename: str) -> logging.Logger:
     fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
     if not logger.handlers:
         logger.addHandler(fh)
-        logger.addHandler(console_handler)
+        #logger.addHandler(console_handler)
     return logger
 
 logger = make_logger("main", "main.log")
+logger.addHandler(console_handler)
 logger_olx = make_logger("olx", "parser_olx.log")
 logger_otodom = make_logger("otodom", "parser_otodom.log")
 logger_morizon = make_logger("morizon", "parser_morizon.log")
@@ -43,6 +44,7 @@ logger_net = make_logger("net", "net.log")
 logger_bot = make_logger("bot", "bot.log")
 logger_act = make_logger("actual", "actual.log")
 logger_trans = make_logger("translator", "translator.log")
+logger_worker = make_logger("bot.worker", "worker.log")
 
 # =======================
 # Helpers: потоки
@@ -69,11 +71,11 @@ def build_thread_specs() -> dict[str, callable]:
     Каждая фабрика возвращает уже стартованный Thread.
     """
     return {
-        #"olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
-        #"otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
-        #"morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
-        #"nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
-        #"checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
+        "olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
+        "otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
+        "morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
+        "nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
+        "checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
         "translator": lambda: run_thread(lambda: start_translation(stop_event), "translator"),
     }
 

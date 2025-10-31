@@ -5,10 +5,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, func
 from app.deps import db_session_dep
 from app.validator import valid_user_from_header, MiniAppAuth
-from db.models import Listing, User, SavedListing
+from db.models import Listing, User, SavedListing, MessageType, ChatType
 from db.repo_async import *
-from bot.bot import sender_bot
-from bot.utils.messages import trigger_invoice
+
 
 
 
@@ -126,6 +125,11 @@ async def triger_invoice_url(data: JsonDict, session: Db, auth_user: Auth):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid user")
     
-    message = await trigger_invoice(user=user, bot=sender_bot)
+    message = await schedule_message(
+        session=session,
+        message_type=MessageType.INVOICE,
+        chat_type=ChatType.PRIVATE,
+        payload=data,
+        user_id=user.id)
     
-    return {"status": message.message_id}
+    return {"status": message.status}

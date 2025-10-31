@@ -1,5 +1,5 @@
 from aiogram import BaseMiddleware
-from aiogram.types import Message, CallbackQuery, Update, User as TgUser
+from aiogram.types import Message, CallbackQuery, Update, Chat, User as TgUser
 from typing import Callable, Dict, Any, Awaitable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
@@ -38,6 +38,13 @@ class PrivateChatOnlyMiddleware(BaseMiddleware):
             return  # просто игнорируем
         return await handler(event, data)
 
+class PrivateChatOnlyMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        chat: Chat | None = data.get("event_chat")
+        if not chat or chat.type != "private":
+            return
+        return await handler(event, data)
+    
 
 class DBSessionMiddleware(BaseMiddleware):
     """

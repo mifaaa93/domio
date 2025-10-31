@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 067522923218
+Revision ID: 6c76b1906200
 Revises: 
-Create Date: 2025-10-29 10:20:07.425279
+Create Date: 2025-10-31 16:23:04.233372
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '067522923218'
+revision: str = '6c76b1906200'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -72,6 +72,31 @@ def upgrade() -> None:
     )
     op.create_index('ix_districts_city', 'districts', ['city_id'], unique=False)
     op.create_index('ix_districts_name_pl', 'districts', ['name_pl'], unique=False)
+    op.create_table('scheduled_messages',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.BigInteger(), nullable=True),
+    sa.Column('chat_id', sa.BigInteger(), nullable=True),
+    sa.Column('chat_type', sa.Enum('PRIVATE', 'CHANNEL', name='chat_type', native_enum=False, create_constraint=True), nullable=False),
+    sa.Column('message_type', sa.Enum('REMINDER', 'BROADCAST', 'CUSTOM', 'INVOICE', name='message_type', native_enum=False, create_constraint=True), nullable=False),
+    sa.Column('priority', sa.Integer(), server_default=sa.text('0'), nullable=False),
+    sa.Column('send_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'CLAIMED', 'SENDING', 'SENT', 'FAILED', 'CANCELED', name='scheduled_status', native_enum=False, create_constraint=True), server_default=sa.text("'queued'"), nullable=False),
+    sa.Column('attempts', sa.Integer(), server_default=sa.text('0'), nullable=False),
+    sa.Column('max_attempts', sa.Integer(), server_default=sa.text('5'), nullable=False),
+    sa.Column('last_error', sa.Text(), nullable=True),
+    sa.Column('locked_by', sa.String(length=64), nullable=True),
+    sa.Column('locked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('dedup_key', sa.String(length=128), nullable=True),
+    sa.Column('idempotent', sa.Boolean(), server_default=sa.text('true'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_sched_chat', 'scheduled_messages', ['chat_id'], unique=False)
+    op.create_index('ix_sched_status_sendat_prio', 'scheduled_messages', ['status', 'send_at', 'priority'], unique=False)
+    op.create_index('ix_sched_user', 'scheduled_messages', ['user_id'], unique=False)
+    op.create_index('uq_sched_dedup_key_not_null', 'scheduled_messages', ['dedup_key'], unique=True, postgresql_where=sa.text('dedup_key IS NOT NULL'))
     op.create_table('user_searches',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.BigInteger(), nullable=False),
@@ -187,6 +212,11 @@ def downgrade() -> None:
     op.drop_index('ix_user_search_user_id', table_name='user_searches')
     op.drop_index('ix_user_search_city', table_name='user_searches')
     op.drop_table('user_searches')
+    op.drop_index('uq_sched_dedup_key_not_null', table_name='scheduled_messages', postgresql_where=sa.text('dedup_key IS NOT NULL'))
+    op.drop_index('ix_sched_user', table_name='scheduled_messages')
+    op.drop_index('ix_sched_status_sendat_prio', table_name='scheduled_messages')
+    op.drop_index('ix_sched_chat', table_name='scheduled_messages')
+    op.drop_table('scheduled_messages')
     op.drop_index('ix_districts_name_pl', table_name='districts')
     op.drop_index('ix_districts_city', table_name='districts')
     op.drop_table('districts')

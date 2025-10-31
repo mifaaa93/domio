@@ -289,6 +289,53 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "uk": "Результати запиту",
         "en": "Search results",
         "pl": "Wyniki wyszukiwania"
+    },
+    "open_listing_btn": {
+        "uk": "Переглянути оголошення",
+        "en": "View listing",
+        "pl": "Zobacz ogłoszenie"
+    },
+    "like_listing_btn": {
+        "uk": "Зберегти",
+        "en": "Save",
+        "pl": "Zapisz"
+    },
+    "unlike_listing_btn": {
+        "uk": "Видалити",
+        "en": "Remove",
+        "pl": "Usuń"
+    },
+
+}
+
+LISTINGS = {
+    "listing_new_text": {
+        "uk": '''<b>🏠 Нова квартира знайдена!</b>
+Domio щойно знайшов для тебе свіжу пропозицію напряму від власника 👇
+
+📍 <b>Місто:</b> {city}
+💰 <b>Ціна:</b> {price} PLN
+📏 <b>Площа:</b> {area}
+🛏 <b>Кімнат:</b> {rooms}
+📄 <b>Опис:</b> {description}''',
+
+        "en": '''<b>🏠 New apartment found!</b>
+Domio has just found a fresh offer directly from the owner 👇
+
+📍 <b>City:</b> {city}
+💰 <b>Price:</b> {price} PLN
+📏 <b>Area:</b> {area}
+🛏 <b>Rooms:</b> {rooms}
+📄 <b>Description:</b> {description}''',
+
+        "pl": '''<b>🏠 Znaleziono nowe mieszkanie!</b>
+Domio właśnie znalazł dla Ciebie świeżą ofertę bezpośrednio od właściciela 👇
+
+📍 <b>Miasto:</b> {city}
+💰 <b>Cena:</b> {price} PLN
+📏 <b>Powierzchnia:</b> {area}
+🛏 <b>Pokoje:</b> {rooms}
+📄 <b>Opis:</b> {description}'''
     }
 }
 
@@ -305,6 +352,9 @@ def t(lang: Lang | None, key: str) -> str:
     """Возвращает текст по ключу и языку с fallback на uk."""
     return TEXTS.get(key, {}).get(lang or "uk", TEXTS.get(key, {}).get("uk", key))
 
+def listing_t(lang: Lang | None, key: str) -> str:
+    """Возвращает текст по ключу и языку с fallback на uk."""
+    return LISTINGS.get(key, {}).get(lang or "uk", LISTINGS.get(key, {}).get("uk", key))
 
 def btn(lang: Lang | None, key: str) -> str:
     """Возвращает текст кнопки по ключу и языку с fallback на uk."""

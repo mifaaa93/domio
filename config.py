@@ -29,7 +29,7 @@ PROXIES_HOST = "brd.superproxy.io"
 PROXIES_PORT = "33335"
 PROXIES_USERNAME = os.getenv("PROXIES_USERNAME")
 PROXIES_PASS = os.getenv("PROXIES_PASS")
-DOMAIN = "https://48ddbbc471d2.ngrok-free.app"
+DOMAIN = "https://755191cc2dab.ngrok-free.app"
 MINIAPP_URL = f"{DOMAIN}/miniapp/"
 UPAY_CALL_URL = f"{DOMAIN}/payments/"
 
