@@ -337,3 +337,18 @@ def get_results_keyboard(lang: str | None = None, search_id: int=None) -> Inline
     )
     
     return builder.as_markup()
+
+
+def get_favorites_keyboard(lang: str | None = None,) -> InlineKeyboardMarkup:
+    """просмотра результатов"""
+    builder = InlineKeyboardBuilder()
+    params = {
+        "type": "saved",
+        "lang": lang,
+        }
+    url = add_query_params(MINIAPP_URL, params)
+    builder.row(
+        InlineKeyboardButton(text=btn(lang, "my_favorites_btn"), web_app=WebAppInfo(url=url))
+    )
+    
+    return builder.as_markup()

@@ -1,5 +1,6 @@
 # db/models.py
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from sqlalchemy import (
     String, Integer, BigInteger, Numeric, Boolean, DateTime, Text, ForeignKey,
     Index, UniqueConstraint, CheckConstraint, Computed, text
@@ -313,7 +314,40 @@ class User(Base):
         Index("ix_users_registered_at", "registered_at"),
         Index("ix_users_last_active_at", "last_active_at"),
     )
-    
+
+
+    @property
+    def subscription_until_str(self) -> str:
+        '''
+        дату до которой активана подписка в формате ДД.ММ.ГГ ЧЧ:ММ
+        '''
+        # приводим к таймзоне Варшавы (можешь поменять на нужную)
+        if not self.subscription_until:
+            return "----"
+        try:
+            tz = ZoneInfo("Europe/Warsaw")
+            local_dt = self.subscription_until.astimezone(tz)
+        except Exception:
+            # fallback: без конвертации
+            local_dt = self.subscription_until
+
+        return local_dt.strftime("%d.%m.%y %H:%M")
+        
+
+
+
+    @property
+    def buyer(self) -> dict:
+        '''
+        возвращает тру если у юзера активна подписка
+        '''
+        {
+            "extCustomerId": self.id,
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "language": self.language_code,
+            }
+
     @property
     def subscribed(self) -> bool:
         '''
@@ -556,7 +590,6 @@ class SavedListing(Base):
         Index("ix_saved_listings_user_created", "user_id", "created_at"),
     )
 
-from sqlalchemy import Enum as SAEnum
 
 class MessageType(str, Enum):
     REMINDER = "reminder"
@@ -564,9 +597,11 @@ class MessageType(str, Enum):
     CUSTOM = "custom"
     INVOICE = "invoice"
 
+
 class ChatType(str, Enum):
     PRIVATE = "private"
     CHANNEL = "channel"
+
 
 class ScheduledStatus(str, Enum):
     QUEUED = "queued"
@@ -632,3 +667,104 @@ class ScheduledMessage(Base):
             postgresql_where=(dedup_key.is_not(None)),  # <- partial unique
         ),
 )
+
+
+class InvoiceStatus(str, Enum):
+    CREATED = "CREATED"
+    PENDING = "PENDING"
+    WAITING_FOR_CONFIRMATION = "WAITING_FOR_CONFIRMATION"
+    COMPLETED = "COMPLETED"
+    CANCELED = "CANCELED"
+    REJECTED = "REJECTED"
+
+# задайте свои варианты (подписка/разовый/пакет и т.п.)
+class InvoiceType(str, Enum):
+    SUBSCRIPTION = "SUBSCRIPTION"
+    ONE_TIME = "ONE_TIME"
+
+# === Токены карт ===
+# Храним CARD_TOKEN от PayU (значение value), опционально — маску PAN/brand из PayU GET orders
+# Один пользователь может иметь несколько токенов; токен уникален глобально.
+
+class UserCardToken(Base):
+    __tablename__ = "user_card_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token: Mapped[str] = mapped_column(String(255), unique=True)     # PayU card token (value)
+    last4: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
+    brand: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # VISA/MC/...
+    exp_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    exp_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False)
+
+    user: Mapped["User"] = relationship("User", backref="card_tokens")
+
+    __table_args__ = (
+        Index("ix_card_tokens_user_active", "user_id", "is_active"),
+    )
+
+
+# === Инвойсы / Заказы PayU ===
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    # связь с пользователем
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user: Mapped["User"] = relationship("User", backref="invoices")
+    client_ip: Mapped[str] = mapped_column(String(64), nullable=True)
+    redirect_uri: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # тип инвойса (назначение) и "кол-во дней"
+    invoice_type: Mapped[InvoiceType] = mapped_column(SAEnum(InvoiceType, name="invoice_type"), default=InvoiceType.SUBSCRIPTION, nullable=False)
+    
+    subscribe_type: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # суммы: в грошах (целые!), валюта
+    amount: Mapped[float] = mapped_column(Numeric(10, 2, asdecimal=False), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="PLN", nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # PayU идентификаторы
+    payu_order_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True, index=True)       # orderId
+    payu_ext_order_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True, index=True)   # extOrderId (ваш)
+    payu_payment_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)                  # из properties: PAYMENT_ID
+
+    # статус PayU
+    status: Mapped[InvoiceStatus] = mapped_column(SAEnum(InvoiceStatus, name="invoice_status"), default=InvoiceStatus.CREATED, nullable=False)
+
+    # ссылка на сохранённый токен карты (если FIRST → получили токен)
+    card_token_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user_card_tokens.id", ondelete="SET NULL"), nullable=True)
+    card_token: Mapped[Optional["UserCardToken"]] = relationship("UserCardToken")
+
+    # сырой JSON из вебхука/GET orders (последний снимок)
+    payu_raw: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+    # служебные даты
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # когда мы дернули confirm COMPLETED
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)  # когда получили COMPLETED
+
+    # “мягкие” флаги
+    is_refunded: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __table_args__ = (
+        # Гарантия: либо extOrderId уникален, либо orderId. Оба — по ситуации.
+        # Отдельные unique уже заданы в колонках.
+        Index("ix_invoices_user_status", "user_id", "status"),
+        Index("ix_invoices_created_at", "created_at"),
+    )

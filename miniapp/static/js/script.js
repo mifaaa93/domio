@@ -178,8 +178,9 @@ function renderApartment(a, pageTag) {
             <span>${commissionText}</span>
           </div>
         </div>
-        <span class="card-address">${a.address}</span>
-        <span class="card-city_distr">${a.city_distr}</span>
+        <span class="card-address">${a.city_distr}</span>
+        <!--<span class="card-address">${a.address}</span>-->
+        <!--<span class="card-city_distr">${a.city_distr}</span>-->
       </div>
     </div>
 

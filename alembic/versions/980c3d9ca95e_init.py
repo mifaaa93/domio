@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 6c76b1906200
+Revision ID: 980c3d9ca95e
 Revises: 
-Create Date: 2025-10-31 16:23:04.233372
+Create Date: 2025-11-04 16:38:18.842827
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '6c76b1906200'
+revision: str = '980c3d9ca95e'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -97,6 +97,23 @@ def upgrade() -> None:
     op.create_index('ix_sched_status_sendat_prio', 'scheduled_messages', ['status', 'send_at', 'priority'], unique=False)
     op.create_index('ix_sched_user', 'scheduled_messages', ['user_id'], unique=False)
     op.create_index('uq_sched_dedup_key_not_null', 'scheduled_messages', ['dedup_key'], unique=True, postgresql_where=sa.text('dedup_key IS NOT NULL'))
+    op.create_table('user_card_tokens',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.BigInteger(), nullable=False),
+    sa.Column('token', sa.String(length=255), nullable=False),
+    sa.Column('last4', sa.String(length=4), nullable=True),
+    sa.Column('brand', sa.String(length=32), nullable=True),
+    sa.Column('exp_month', sa.Integer(), nullable=True),
+    sa.Column('exp_year', sa.Integer(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('token')
+    )
+    op.create_index('ix_card_tokens_user_active', 'user_card_tokens', ['user_id', 'is_active'], unique=False)
+    op.create_index(op.f('ix_user_card_tokens_user_id'), 'user_card_tokens', ['user_id'], unique=False)
     op.create_table('user_searches',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.BigInteger(), nullable=False),
@@ -121,6 +138,39 @@ def upgrade() -> None:
     )
     op.create_index('ix_user_search_city', 'user_searches', ['city_id'], unique=False)
     op.create_index('ix_user_search_user_id', 'user_searches', ['user_id'], unique=False)
+    op.create_table('invoices',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.BigInteger(), nullable=True),
+    sa.Column('client_ip', sa.String(length=64), nullable=True),
+    sa.Column('redirect_uri', sa.Text(), nullable=True),
+    sa.Column('invoice_type', sa.Enum('SUBSCRIPTION', 'ONE_TIME', name='invoice_type'), nullable=False),
+    sa.Column('subscribe_type', sa.String(length=64), nullable=True),
+    sa.Column('days', sa.Integer(), nullable=True),
+    sa.Column('amount', sa.Numeric(precision=10, scale=2, asdecimal=False), nullable=False),
+    sa.Column('currency', sa.String(length=3), nullable=False),
+    sa.Column('description', sa.String(length=255), nullable=True),
+    sa.Column('payu_order_id', sa.String(length=64), nullable=True),
+    sa.Column('payu_ext_order_id', sa.String(length=64), nullable=True),
+    sa.Column('payu_payment_id', sa.String(length=32), nullable=True),
+    sa.Column('status', sa.Enum('CREATED', 'PENDING', 'WAITING_FOR_CONFIRMATION', 'COMPLETED', 'CANCELED', 'REJECTED', name='invoice_status'), nullable=False),
+    sa.Column('card_token_id', sa.Integer(), nullable=True),
+    sa.Column('payu_raw', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('confirmed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('is_refunded', sa.Boolean(), nullable=False),
+    sa.Column('is_test', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['card_token_id'], ['user_card_tokens.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_invoices_created_at', 'invoices', ['created_at'], unique=False)
+    op.create_index(op.f('ix_invoices_payu_ext_order_id'), 'invoices', ['payu_ext_order_id'], unique=True)
+    op.create_index(op.f('ix_invoices_payu_order_id'), 'invoices', ['payu_order_id'], unique=True)
+    op.create_index(op.f('ix_invoices_payu_payment_id'), 'invoices', ['payu_payment_id'], unique=False)
+    op.create_index(op.f('ix_invoices_user_id'), 'invoices', ['user_id'], unique=False)
+    op.create_index('ix_invoices_user_status', 'invoices', ['user_id', 'status'], unique=False)
     op.create_table('listings',
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('source', sa.String(length=32), nullable=False),
@@ -209,9 +259,19 @@ def downgrade() -> None:
     op.drop_index('ix_listings_city_deal', table_name='listings')
     op.drop_index('ix_listings_city', table_name='listings')
     op.drop_table('listings')
+    op.drop_index('ix_invoices_user_status', table_name='invoices')
+    op.drop_index(op.f('ix_invoices_user_id'), table_name='invoices')
+    op.drop_index(op.f('ix_invoices_payu_payment_id'), table_name='invoices')
+    op.drop_index(op.f('ix_invoices_payu_order_id'), table_name='invoices')
+    op.drop_index(op.f('ix_invoices_payu_ext_order_id'), table_name='invoices')
+    op.drop_index('ix_invoices_created_at', table_name='invoices')
+    op.drop_table('invoices')
     op.drop_index('ix_user_search_user_id', table_name='user_searches')
     op.drop_index('ix_user_search_city', table_name='user_searches')
     op.drop_table('user_searches')
+    op.drop_index(op.f('ix_user_card_tokens_user_id'), table_name='user_card_tokens')
+    op.drop_index('ix_card_tokens_user_active', table_name='user_card_tokens')
+    op.drop_table('user_card_tokens')
     op.drop_index('uq_sched_dedup_key_not_null', table_name='scheduled_messages', postgresql_where=sa.text('dedup_key IS NOT NULL'))
     op.drop_index('ix_sched_user', table_name='scheduled_messages')
     op.drop_index('ix_sched_status_sendat_prio', table_name='scheduled_messages')

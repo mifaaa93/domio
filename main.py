@@ -14,7 +14,7 @@ from parser.otodom_parser import start_otodom
 from parser.morizon_parser import start_morizone
 from parser.nieruch_parser import start_nieruch
 from parser.actual_cheker import check_actual_listings_sync  # если нужен асинхронный фон. чекер
-from parser.translater_w import start_translation
+from parser.translater_w import start_translation_pool
 # =======================
 # Логирование
 # =======================
@@ -76,7 +76,7 @@ def build_thread_specs() -> dict[str, callable]:
         "morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
         "nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
         "checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
-        "translator": lambda: run_thread(lambda: start_translation(stop_event), "translator"),
+        "translator": lambda: run_thread(lambda: start_translation_pool(stop_event), "translator"),
     }
 
 def start_threads(thread_specs: dict[str, callable]) -> dict[str, threading.Thread]:

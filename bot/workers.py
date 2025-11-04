@@ -27,7 +27,7 @@ from db.repo_async import (
 )  # замените на ваш путь
 from bot.keyboards.listing import get_under_listing_btns
 from bot.texts import listing_t
-from bot.utils.messages import trigger_invoice
+from bot.utils.messages import trigger_invoice, successful_subscription
 
 
 logger = logging.getLogger("bot.worker")
@@ -370,15 +370,24 @@ async def send_scheduled_message(bot: Bot, session: AsyncSession, msg: Scheduled
     """
     chat_id = msg.chat_id
     payload: dict[str, Any] = msg.payload
+    sub_type = None
+    if payload:
+        sub_type = payload.get("sub_type", None)
     # Пример: разные типы сообщений
     mtype = msg.message_type
     try:
         # Можно разветвить логику по типу (пример)
-        if mtype == MessageType.INVOICE:
+        if mtype == MessageType.INVOICE and sub_type=="done":
+            user = msg.user
+            message = await successful_subscription(user=user, bot=bot, payload=payload)
+            return True
+    
+        elif mtype == MessageType.INVOICE:
             # отправляем инвойс юзеру
             user = msg.user
             message = await trigger_invoice(user=user, bot=bot)
             return True
+        
         elif mtype == MessageType.REMINDER:
             # можно дополнительно форматировать text/caption
             pass

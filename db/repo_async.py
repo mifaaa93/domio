@@ -1,13 +1,28 @@
-# db/repo.py
+# db\repo_async.py
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Sequence
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_, exists, update, text
 from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing
 from db.models import ScheduledMessage, ScheduledStatus, MessageType, ChatType
+from db.models import (
+    Invoice, InvoiceStatus, InvoiceType,
+    UserCardToken,
+)
+
+# ===== статусы: лестница продвижения =====
+STATUS_RANK: dict[InvoiceStatus, int] = {
+    InvoiceStatus.CREATED: 0,
+    InvoiceStatus.PENDING: 1,
+    InvoiceStatus.WAITING_FOR_CONFIRMATION: 2,
+    InvoiceStatus.COMPLETED: 3,
+    InvoiceStatus.CANCELED: 100,   # терминальные
+    InvoiceStatus.REJECTED: 100,
+}
 
 
 async def get_user_by_token(session: AsyncSession, user_id: int) -> User | None:
@@ -363,7 +378,11 @@ async def get_users_for_listing(session: AsyncSession, listing: Listing) -> list
         chunk = ids_list[i:i + chunk_size]
         result = await session.scalars(
             select(User)
-            .where(User.id.in_(chunk), User.is_active.is_(True))
+            .where(
+                User.id.in_(chunk),
+                User.is_active.is_(True),
+                User.subscription_until.is_not(None),
+                User.subscription_until > func.now(),)
             .order_by(User.id.asc())
         )
         users.extend(result.all())
@@ -378,70 +397,121 @@ async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
     return result.all()
 
 
-async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str, lang: str=None) -> list[dict]:
-
-    '''
-    for adv in qs[start:end]:
-        res.append({
-            "base_id": adv.base_id,
-            "description": adv.description,
-            "price": adv.price_str,
-            "city_distr": adv.city_distr_location_str,
-            "address": adv.address or '',
-            "floor": adv.floor or '',
-            "rooms": adv.number_of_rooms_string_from_int,
-            "total_floors": adv.total_floors or '',
-            "area": adv.total_area or '-',
-            "images": adv.all_photo_list,
-            "saved": adv.base_id in saved_ids,
-            "no_comission": listing.no_comission,
-            "property_type": listing.property_type
-        })
-
-    return {
-        "results": res,
-        "total": total,
-        "has_next": total>end,
-        "cat": cat,
-        "total_page": (total + PER_PAGE - 1) // PER_PAGE}
-    '''
+async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str, lang: str = None) -> dict:
+    """
+    cat: 'listing' | 'saved' (добавлено)
+    Возвращает:
+      {
+        "results": [...],
+        "total": int,
+        "has_next": bool,
+        "cat": str,
+        "total_page": int
+      }
+    """
     limit = 10
-    offset = limit*(page-1)
-    end = limit*page
-    lang = lang or user.language_code or 'uk'
-    search = await get_user_search(session, user)
-    res = []
+    offset = limit * (page - 1)
+    end = limit * page
+    lang = (lang or user.language_code or 'uk').lower()
+    res: list[dict] = []
     total = 0
-    if search.has_confirmed_policy:
-        data, total = await find_listings_by_search(session, search, limit, offset, return_total=True)
+
+    # ----- ТОЛЬКО СОХРАНЁННЫЕ -----
+    if cat == "saved":
+        # total
+        total_stmt = (
+            select(func.count())
+            .select_from(SavedListing)
+            .where(SavedListing.user_id == user.id)
+        )
+        total = int(await session.scalar(total_stmt) or 0)
+
         if total:
-            saved_ids = await get_saved_listing_ids(session, user)
-            for listing in data:
-                listing: Listing
+            # сами листинги
+            stmt = (
+                select(Listing)
+                .join(SavedListing, SavedListing.listing_id == Listing.id)
+                .where(SavedListing.user_id == user.id)
+                .options(
+                    selectinload(Listing.city),
+                    selectinload(Listing.district),
+                )
+                .order_by(SavedListing.created_at.desc(), Listing.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+            listings = list(await session.scalars(stmt))
+
+            for listing in listings:
                 city_name = listing.city.get_name_local(lang) if listing.city else ""
                 distr_name = listing.district.get_name_local(lang) if listing.district else ""
                 city_distr = ", ".join([p for p in (city_name, distr_name) if p])
                 res.append({
-                "base_id": listing.id,
-                "description": listing.get_description_local(lang),
-                "price": f"{listing.price:.0f} PLN" if listing.price else '-',
-                "city_distr": city_distr,
-                "address": listing.address or city_distr,
-                "rooms": listing.rooms or '-',
-                "area": listing.area_m2 or '-',
-                "images": listing.photos,
-                "saved": listing.id in saved_ids,
-                "no_comission": listing.no_comission,
-                "property_type": listing.property_type
-            })
+                    "base_id": listing.id,
+                    "description": listing.get_description_local(lang),
+                    "price": f"{listing.price:.0f} PLN" if listing.price else '-',
+                    "city_distr": city_distr,
+                    "address": listing.address or city_distr,
+                    "rooms": listing.rooms if listing.rooms is not None else '-',
+                    "area": listing.area_m2 if listing.area_m2 is not None else '-',
+                    "images": listing.photos,
+                    "saved": True,  # тут всегда сохранённое
+                    "no_comission": listing.no_comission,
+                    "property_type": listing.property_type,
+                })
+
+        return {
+            "results": res,
+            "total": total,
+            "has_next": total > end,
+            "cat": cat,
+            "total_page": (total + limit - 1) // limit,
+        }
+
+    # ----- ОСНОВНОЙ СПИСОК ПО ПОИСКУ (как было) -----
+    if cat == "listing":
+        search = await get_user_search(session, user)
+        if search.has_confirmed_policy:
+            data, total = await find_listings_by_search(session, search, limit, offset, return_total=True)
+            if total:
+                saved_ids = await get_saved_listing_ids(session, user)
+                saved_ids = set(saved_ids)  # ускорим проверку
+                for listing in data:
+                    listing: Listing
+                    city_name = listing.city.get_name_local(lang) if listing.city else ""
+                    distr_name = listing.district.get_name_local(lang) if listing.district else ""
+                    city_distr = ", ".join([p for p in (city_name, distr_name) if p])
+                    res.append({
+                        "base_id": listing.id,
+                        "description": listing.get_description_local(lang),
+                        "price": f"{listing.price:.0f} PLN" if listing.price else '-',
+                        "city_distr": city_distr,
+                        "address": listing.address or city_distr,
+                        "rooms": listing.rooms if listing.rooms is not None else '-',
+                        "area": listing.area_m2 if listing.area_m2 is not None else '-',
+                        "images": listing.photos,
+                        "saved": listing.id in saved_ids,
+                        "no_comission": listing.no_comission,
+                        "property_type": listing.property_type,
+                    })
+
+        return {
+            "results": res,
+            "total": total,
+            "has_next": total > end,
+            "cat": cat,
+            "total_page": (total + limit - 1) // limit,
+        }
+
+    # ----- на будущее: другие категории (last_week и т.п.) -----
+    # По умолчанию вернём пустой результат для неизвестной категории
     return {
-        "results": res,
-        "total": total,
-        "has_next": total>end,
+        "results": [],
+        "total": 0,
+        "has_next": False,
         "cat": cat,
-        "total_page": (total + limit - 1) // limit}
-
-
+        "total_page": 0,
+    }
 
 async def schedule_message(
     session: AsyncSession,
@@ -584,3 +654,240 @@ async def cancel_message(session: AsyncSession, msg_id: int):
         .values(status=ScheduledStatus.CANCELED)
     )
     await session.commit()
+
+async def add_sub_to_user(session: AsyncSession, user: User, days: int) -> None:
+    """
+    Продлевает подписку пользователя на `days` суток.
+    Если подписки нет или она уже истекла — начинает отсчёт от текущего времени (UTC).
+    Возвращает новое значение subscription_until (UTC).
+    """
+    if days <= 0:
+        # ничего не меняем — возвращаем текущее значение (или now, если его нет)
+        return
+
+    now = datetime.now(timezone.utc)
+    base = user.subscription_until if (user.subscription_until and user.subscription_until > now) else now
+    new_until = base + timedelta(days=days)
+
+    user.subscription_until = new_until
+    await session.flush()  # фиксация изменений в текущей транзакции (commit делает вызывающий код)
+
+
+async def disable_sub_to_user(session: AsyncSession, user: User) -> None:
+    """
+    Продлевает подписку пользователя на `days` суток.
+    Если подписки нет или она уже истекла — начинает отсчёт от текущего времени (UTC).
+    Возвращает новое значение subscription_until (UTC).
+    """
+    user.subscription_until = None
+    await session.commit()  # фиксация изменений в текущей транзакции (commit делает вызывающий код)
+
+
+async def create_invoice(
+    session: AsyncSession,
+    *,
+    user_id: Optional[int],
+    invoice_type: InvoiceType,
+    amount: float,
+    currency: str = "PLN",
+    description: Optional[str] = None,
+    days: Optional[int] = None,
+    subscribe_type: Optional[str] = None,
+    payu_ext_order_id: Optional[str] = None,
+    client_ip: str = None,
+    is_test: bool = False,
+    reuse_window_minutes: int = 10,   # ← окно переиспользования
+) -> Invoice:
+    """
+    Ищет и переиспользует уже созданный инвойс (CREATED + redirect_uri IS NOT NULL)
+    за последние N минут по ключам (user_id, invoice_type, amount, currency, subscribe_type).
+    Если не найден — создаёт новый (status=CREATED).
+    """
+    # нормализуем сумму к Decimal
+
+    # --- 1) Пытаемся найти подходящий инвойс за последние N минут ---
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=reuse_window_minutes)
+
+    stmt = (
+        select(Invoice)
+        .where(
+            Invoice.user_id == user_id,
+            Invoice.invoice_type == invoice_type,
+            Invoice.amount == amount,
+            Invoice.currency == currency,
+            Invoice.subscribe_type == subscribe_type,
+            Invoice.status == InvoiceStatus.CREATED,
+            Invoice.redirect_uri.is_not(None),      # непустая ссылка
+            Invoice.created_at >= cutoff,
+        )
+        .order_by(Invoice.created_at.desc())
+        .limit(1)
+    )
+    res = await session.execute(stmt)
+    existing = res.scalar_one_or_none()
+    if existing:
+        return existing
+
+    # --- 2) Иначе создаём новый черновик ---
+    inv = Invoice(
+        user_id=user_id,
+        invoice_type=invoice_type,
+        amount=amount,                      # Numeric(10,2)
+        currency=currency,
+        description=description,
+        days=days,
+        subscribe_type=subscribe_type,
+        payu_ext_order_id=payu_ext_order_id,
+        is_test=is_test,
+        client_ip=client_ip,
+        status=InvoiceStatus.CREATED,
+    )
+    session.add(inv)
+    await session.flush()  # получим inv.id
+    return inv
+
+# ---------- LOOKUPS ----------
+
+async def get_invoice_by_id(session: AsyncSession, invoice_id: int) -> Optional[Invoice]:
+    res = await session.execute(select(Invoice).where(Invoice.id == invoice_id))
+    return res.scalar_one_or_none()
+
+async def get_invoice_by_order_id(session: AsyncSession, order_id: str) -> Optional[Invoice]:
+    res = await session.execute(select(Invoice).where(Invoice.payu_order_id == order_id))
+    return res.scalar_one_or_none()
+
+async def get_invoice_by_ext_order_id(session: AsyncSession, ext_order_id: str) -> Optional[Invoice]:
+    res = await session.execute(select(Invoice).where(Invoice.payu_ext_order_id == ext_order_id))
+    return res.scalar_one_or_none()
+
+# ---------- PAYU REFERENCES / SNAPSHOT ----------
+
+async def attach_payu_order_refs(
+    session: AsyncSession,
+    invoice_id: int,
+    *,
+    order_id: Optional[str] = None,
+    ext_order_id: Optional[str] = None,
+    payment_id: Optional[str] = None,
+    payu_raw: Optional[dict] = None,
+    redirect_uri: Optional[str] = None,
+) -> None:
+    """Привязывает orderId/extOrderId/paymentId и опционально обновляет raw снапшот."""
+    values: dict = {}
+    if order_id is not None:
+        values["payu_order_id"] = order_id
+    if ext_order_id is not None:
+        values["payu_ext_order_id"] = ext_order_id
+    if payment_id is not None:
+        values["payu_payment_id"] = payment_id
+    if payu_raw is not None:
+        values["payu_raw"] = payu_raw
+    if redirect_uri is not None:
+        values["redirect_uri"] = redirect_uri
+
+    if values:
+        await session.execute(update(Invoice).where(Invoice.id == invoice_id).values(**values))
+
+
+async def record_webhook_snapshot(
+    session: AsyncSession,
+    invoice: Invoice,
+    *,
+    payu_raw: Optional[dict],
+    status: Optional[InvoiceStatus] = None,
+) -> bool:
+    """
+    Обновляет payu_raw и, если status задан, продвигает статус идемпотентно.
+    Возвращает True, если статус изменился.
+    """
+    changed = False
+    if payu_raw is not None:
+        invoice.payu_raw = payu_raw
+
+    if status is not None:
+        changed = await advance_status(session, invoice, status)
+
+    await session.flush()
+    return changed
+
+# ---------- STATUS ADVANCE (IDEMPOTENT) ----------
+
+async def advance_status(
+    session: AsyncSession,
+    invoice: Invoice,
+    new_status: InvoiceStatus,
+) -> bool:
+    """Продвигает статус по лестнице. Таймштампы: confirmed_at при нашем confirm; completed_at при COMPLETED."""
+    cur = invoice.status
+    if STATUS_RANK.get(new_status, -1) > STATUS_RANK.get(cur, -1):
+        invoice.status = new_status
+        now = datetime.now(timezone.utc)
+        if new_status == InvoiceStatus.COMPLETED and invoice.completed_at is None:
+            invoice.completed_at = now
+        await session.flush()
+        return True
+    return False
+
+async def mark_confirmed_now(session: AsyncSession, invoice: Invoice) -> None:
+    """Фиксирует момент, когда мы дернули confirm → COMPLETED (двухфазный сценарий)."""
+    invoice.confirmed_at = datetime.now(timezone.utc)
+    await session.flush()
+
+# ---------- CARD TOKEN ----------
+
+async def upsert_card_token(
+    session: AsyncSession,
+    user_id: int,
+    token: str,
+    *,
+    last4: Optional[str] = None,
+    brand: Optional[str] = None,
+    exp_month: Optional[int] = None,
+    exp_year: Optional[int] = None,
+) -> UserCardToken:
+    """Создаёт/реактивирует токен карты. Уникальность token обеспечена на уровне модели."""
+    res = await session.execute(select(UserCardToken).where(UserCardToken.token == token))
+    ct = res.scalar_one_or_none()
+    if ct:
+        # обновим данные, если что-то новое пришло
+        ct.is_active = True
+        if last4 is not None:
+            ct.last4 = last4
+        if brand is not None:
+            ct.brand = brand
+        if exp_month is not None:
+            ct.exp_month = exp_month
+        if exp_year is not None:
+            ct.exp_year = exp_year
+    else:
+        ct = UserCardToken(
+            user_id=user_id,
+            token=token,
+            last4=last4,
+            brand=brand,
+            exp_month=exp_month,
+            exp_year=exp_year,
+            is_active=True,
+        )
+        session.add(ct)
+        await session.flush()
+    return ct
+
+async def link_card_token_to_invoice(session: AsyncSession, invoice: Invoice, ct: UserCardToken) -> None:
+    invoice.card_token_id = ct.id
+    await session.flush()
+
+# ---------- HELPERS для потройки PIPELINE ----------
+
+async def set_pending_after_create(session: AsyncSession, invoice: Invoice) -> None:
+    """Удобно вызывать сразу после успешного create_order в PayU (когда получили redirectUri)."""
+    await advance_status(session, invoice, InvoiceStatus.PENDING)
+
+async def set_waiting_for_confirmation(session: AsyncSession, invoice: Invoice) -> None:
+    await advance_status(session, invoice, InvoiceStatus.WAITING_FOR_CONFIRMATION)
+
+async def set_completed(session: AsyncSession, invoice: Invoice) -> None:
+    ok = await advance_status(session, invoice, InvoiceStatus.COMPLETED)
+    if ok and invoice.completed_at is None:
+        invoice.completed_at = datetime.now(timezone.utc)
+    await session.flush()

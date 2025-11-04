@@ -1,28 +1,39 @@
-# app\main.py
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from starlette.staticfiles import StaticFiles  # ⬅️ добавили
+from starlette.staticfiles import StaticFiles
+from payu.payu_client import init_payu
 from app import miniapp, payments
 
-app = FastAPI(title="Domio API")
+
+class CacheAllStatic(StaticFiles):
+    async def get_response(self, path: str, scope):
+        resp = await super().get_response(path, scope)
+        if resp.status_code == 200:
+            ct = resp.headers.get("Content-Type", "")
+            if "text/html" not in ct.lower():
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+            else:
+                resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    payu = init_payu()
+    app.state.payu = payu
+    try:
+        yield
+    finally:
+        await payu.aclose()
+
+app = FastAPI(title="Domio API", lifespan=lifespan)
 
 @app.get("/health")
 async def health():
     return {"ok": True}
 
-# 1) Статика: css/fonts/js/images
-app.mount(
-    "/miniapp/static",
-    StaticFiles(directory="miniapp/static"),
-    name="miniapp-static",
-)
+app.mount("/miniapp/static", CacheAllStatic(directory="miniapp/static"), name="miniapp-static")
+app.mount("/miniapp", CacheAllStatic(directory="miniapp", html=True), name="miniapp")
 
-app.mount(
-    "/miniapp",
-    StaticFiles(directory="miniapp", html=True),
-    name="miniapp",
-)
-
-# API-роутеры (как у тебя)
 app.include_router(miniapp.router, prefix="/api", tags=["miniapp"])
 app.include_router(payments.router, prefix="/payments", tags=["payments"])
-

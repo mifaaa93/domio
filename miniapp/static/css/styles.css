@@ -363,3 +363,35 @@ body::before {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* === Create Invoice (scoped) === */
+body.create-invoice .wrap {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+body.create-invoice .spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #FFC107; /* акцент Domio */
+  animation: ci-spin 0.9s linear infinite;
+}
+
+@keyframes ci-spin {
+  to { transform: rotate(360deg); }
+}
+
+body.create-invoice .msg {
+  opacity: 0.9;
+  font-size: 15px;
+  text-align: center;
+  padding: 0 24px;
+}

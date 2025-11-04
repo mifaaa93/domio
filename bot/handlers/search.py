@@ -42,11 +42,7 @@ async def estate_type_select(callback: CallbackQuery, session: AsyncSession, use
     search = await get_user_search(session, user)
     search.property_type = estate_type_val
     await session.commit()
-    if search.deal_type == "rent":
-        c_list = CITIES_STR
-    else:
-        c_list = CITIES_STR_SALE
-    cities = await get_cities(session, c_list)
+    cities = await get_cities(session, CITIES_STR)
     await select_city(callback, user, try_edit=True, cities=cities)
 
 
@@ -428,11 +424,7 @@ async def back_search_callback(callback: CallbackQuery, session: AsyncSession, u
     
     elif back_from == "select_district":
         # назад из меню выбора района
-        if search.deal_type == "rent":
-            c_list = CITIES_STR
-        else:
-            c_list = CITIES_STR_SALE
-        cities = await get_cities(session, c_list)
+        cities = await get_cities(session, CITIES_STR)
         await select_city(callback, user, try_edit=True, cities=cities)
     
     elif back_from == "area_from":

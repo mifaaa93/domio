@@ -1,5 +1,7 @@
 from typing import Literal, Dict
+from config import TARIFFS_DICT
 
+subscribe_prices = TARIFFS_DICT["SUBSCRIPTION"]
 Lang = Literal["uk", "en", "pl"]
 marker_ok = "✅"
 # --- Основные тексты ---
@@ -100,7 +102,47 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
             "Twoje zapytanie:\n"
             "{search}"
         )
-    }
+    },
+    "favorites": {
+        "uk": "Збережених оголошень: {total}",
+        "en": "Saved listings: {total}",
+        "pl": "Zapisanych ogłoszeń: {total}",
+    },
+    "subscribe_main": {
+        "uk": f'''<i>💛 Що дає кожна підписка:</i>
+🔸 Пробна за {subscribe_prices["test"]["price"]} зл, щоб перевірити, як працює пошук квартир.
+🔸 Підписка на два тижні за {subscribe_prices["2week"]["price"]} зл — <b>повний доступ:</b>
+🔸 Місячна підписка за {subscribe_prices["month"]["price"]} зл — <b>повний доступ:</b>
+• сповіщення, коли з’являються нові квартири 🏠
+• можливість зберігати результати пошуку 📋
+• безкоштовні гайди з оренди 🧾
+
+<i>💬 Оплачуючи підписку та користуючись пошуком квартир, ти автоматично підтверджуєш, що ознайомився та погоджуєшся з регламентом і політикою приватності Domio</i>''',
+        "pl": f"""<i>💛 Co daje każdy abonament:</i>
+🔸 Okres próbny za {subscribe_prices["test"]["price"]} zł, aby sprawdzić, jak działa wyszukiwanie mieszkań.
+🔸 Abonament na dwa tygodnie za {subscribe_prices["2week"]["price"]} zł — <b>pełny dostęp:</b>
+🔸 Abonament miesięczny za {subscribe_prices["month"]["price"]} zł — <b>pełny dostęp:</b>
+• powiadomienia o nowych mieszkaniach 🏠
+• możliwość zapisywania wyników wyszukiwania 📋
+• bezpłatne poradniki dotyczące najmu 🧾
+
+<i>💬 Opłacając abonament i korzystając z wyszukiwarki mieszkań, automatycznie potwierdzasz, że zapoznałeś(-aś) się z regulaminem i polityką prywatności Domio.</i>""",
+        "en": f"""<i>💛 What each subscription gives you:</i>
+🔸 Trial for {subscribe_prices["test"]["price"]} PLN to test how the apartment search works.
+🔸 Two-week subscription for {subscribe_prices["2week"]["price"]} PLN — <b>full access:</b>
+🔸 Monthly subscription for {subscribe_prices["month"]["price"]} PLN — <b>full access:</b>
+• alerts when new apartments appear 🏠
+• ability to save your search results 📋
+• free renting guides 🧾
+
+<i>💬 By paying for a subscription and using the apartment search, you automatically confirm that you have read and agree to Domio’s Terms and Privacy Policy.</i>"""
+
+    },
+    "successful_subscription": {
+        "uk": "✅ У тебе активована підписка на {days} дні(-ів) до {valid_to}",
+        "en": "✅ Your subscription is active for {days} day(s) until {valid_to}",
+        "pl": "✅ Masz aktywną subskrypcję na {days} dni, ważną do {valid_to}"
+    },
 }
 
 BUTTONS: Dict[str, Dict[Lang, str]] = {
@@ -226,12 +268,12 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "pl": "Dowolny metraż"
     },
     "area_from_btn": {
-        "uk": "від {meters} м2",
+        "uk": "від {meters} м²",
         "en": "from {meters} m²",
         "pl": "od {meters} m²"
     },
     "area_to_btn": {
-        "uk": "до {meters} м2",
+        "uk": "до {meters} м²",
         "en": "up to {meters} m²",
         "pl": "do {meters} m²"
     },
@@ -305,6 +347,46 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "en": "Remove",
         "pl": "Usuń"
     },
+    "my_favorites_btn": {
+        "uk": "Переглянути збережені",
+        "en": "View saved",
+        "pl": "Zobacz zapisane",
+    },
+    "subscribe_main_test_btn": {
+        "uk": f"Підписка {subscribe_prices['test']['price']} зл / 3 дні",
+        "en": f"Subscription {subscribe_prices['test']['price']} PLN / 3 days",
+        "pl": f"Abonament {subscribe_prices['test']['price']} zł / 3 dni",
+    },
+    "subscribe_main_2week_btn": {
+        "uk": f"Підписка {subscribe_prices['2week']['price']} зл / 2 тижні",
+        "en": f"Subscription {subscribe_prices['2week']['price']} PLN / 2 weeks",
+        "pl": f"Abonament {subscribe_prices['2week']['price']} zł / 2 tyg.",
+    },
+    "subscribe_main_month_btn": {
+        "uk": f"Підписка {subscribe_prices['month']['price']} зл / міс",
+        "en": f"Subscription {subscribe_prices['month']['price']} PLN / mo",
+        "pl": f"Abonament {subscribe_prices['month']['price']} zł / mies.",
+    },
+    "reglament_btn_text": {
+        "uk": "Регламент",
+        "en": "Terms of Service",
+        "pl": "Regulamin",
+    },
+    "privacy_btn_text": {
+        "uk": "Політика приватності",
+        "en": "Privacy Policy",
+        "pl": "Polityka prywatności",
+    },
+    "pay_btn": {
+        "uk": "Оплатити {amount}",
+        "en": "Pay {amount}",
+        "pl": "Zapłać {amount}"
+    },
+    "show_all_btn": {
+        "uk": "Дивитись всі",
+        "en": "View all",
+        "pl": "Zobacz wszystkie"
+    },
 
 }
 
@@ -315,27 +397,30 @@ Domio щойно знайшов для тебе свіжу пропозицію 
 
 📍 <b>Місто:</b> {city}
 💰 <b>Ціна:</b> {price} PLN
-📏 <b>Площа:</b> {area}
+📏 <b>Площа:</b> {area} м²
 🛏 <b>Кімнат:</b> {rooms}
-📄 <b>Опис:</b> {description}''',
+📄 <b>Опис:</b>
+{description}''',
 
         "en": '''<b>🏠 New apartment found!</b>
 Domio has just found a fresh offer directly from the owner 👇
 
 📍 <b>City:</b> {city}
 💰 <b>Price:</b> {price} PLN
-📏 <b>Area:</b> {area}
+📏 <b>Area:</b> {area} m²
 🛏 <b>Rooms:</b> {rooms}
-📄 <b>Description:</b> {description}''',
+📄 <b>Description:</b>
+{description}''',
 
         "pl": '''<b>🏠 Znaleziono nowe mieszkanie!</b>
 Domio właśnie znalazł dla Ciebie świeżą ofertę bezpośrednio od właściciela 👇
 
 📍 <b>Miasto:</b> {city}
 💰 <b>Cena:</b> {price} PLN
-📏 <b>Powierzchnia:</b> {area}
+📏 <b>Powierzchnia:</b> {area} m²
 🛏 <b>Pokoje:</b> {rooms}
-📄 <b>Opis:</b> {description}'''
+📄 <b>Opis:</b>
+{description}'''
     }
 }
 
@@ -345,6 +430,11 @@ ALERTS: Dict[str, Dict[Lang, str]] = {
         "uk": "🔢 Оберіть кількість кімнат",
         "en": "🔢 Choose the number of rooms",
         "pl": "🔢 Wybierz liczbę pokoi",
+    },
+    "no_such_tariff": {
+        "uk": "Такого тарифу вже не існує",
+        "en": "That plan no longer exists",
+        "pl": "Taki plan już nie istnieje",
     },
 }
 

@@ -25,18 +25,47 @@ PROXIES_POOL: list[str] = [
     "193.28.191.99",
     "154.36.74.49",
     ]
-PROXIES_HOST = "brd.superproxy.io"
-PROXIES_PORT = "33335"
+PROXIES_HOST = os.getenv("PROXIES_HOST")
+PROXIES_PORT = os.getenv("PROXIES_PORT")
 PROXIES_USERNAME = os.getenv("PROXIES_USERNAME")
 PROXIES_PASS = os.getenv("PROXIES_PASS")
-DOMAIN = "https://755191cc2dab.ngrok-free.app"
-MINIAPP_URL = f"{DOMAIN}/miniapp/"
-UPAY_CALL_URL = f"{DOMAIN}/payments/"
 
+DOMAIN = os.getenv("DOMAIN")
+MINIAPP_URL = f"{DOMAIN}/miniapp/"
+UPAY_CALL_URL = f"{DOMAIN}/payments/upay"
+CREATE_INVOICE_URL = f"{DOMAIN}/miniapp/create_invoice/"
+BOT_URL = os.getenv("BOT_URL")
+# словарь где хранятся цены подписок
+TARIFFS_DICT = {
+    "SUBSCRIPTION": {
+        "test": {'price': 4.99, 'days': 3,   'full': False, 'next': 30, "currency": "PLN"},
+        "2week": {'price': 19.99, 'days': 14, 'full': True,  'next': 14, "currency": "PLN"},
+        "month": {'price': 39.99, 'days': 30, 'full': True,  'next': 30, "currency": "PLN"},
+    }
+}
+
+REGLAMENT_URLS = {
+    "pl": "https://domioestate.pl/regulamin-uslugi/",
+    "uk": "https://domioestate.pl/uk/reglament-poslugi/",
+    "en": "https://domioestate.pl/en/terms-of-service/"
+}
+PRIVACI_URLS = {
+    "pl": "https://domioestate.pl/polityka-prywatnosci/",
+    "uk": "https://domioestate.pl/uk/polityka-konfidenciinosti/",
+    "en": "https://domioestate.pl/en/privacy-policy/"
+}
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # максимальное число одновременных запросов
 MAX_CONCURRENT_CHECKS = len(PROXIES_POOL)
+
+
+PAYU_POS_ID = os.getenv("PAYU_POS_ID")
+PAYU_CLIENT_ID = os.getenv("PAYU_CLIENT_ID")
+PAYU_CLIENT_SECRET = os.getenv("PAYU_CLIENT_SECRET")
+PAYU_SECOND_KEY = os.getenv("PAYU_SECOND_KEY")
+PAYU_SANDBOX = os.getenv("PAYU_SANDBOX", "true").lower() == "true"
+
 
 METERS_LIST = (0, 20, 30, 40, 50, 60, 100, )
 

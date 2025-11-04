@@ -1,6 +1,8 @@
 import re
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from aiogram import Bot
+
 
 def add_query_params(url: str, params: dict) -> str:
     # фильтруем None, чтобы не добавлять пустые ключи

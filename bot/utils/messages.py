@@ -3,6 +3,7 @@ from bot.utils.images import get_image
 from bot.texts import t
 from bot.keyboards.lang import get_language_keyboard
 from bot.keyboards.menu import *
+from bot.keyboards.subs import *
 from aiogram.types import Message, CallbackQuery
 from aiogram import Bot
 from db.models import User, District, City, UserSearch
@@ -320,14 +321,60 @@ async def trigger_invoice(
     '''
     '''
     lang = user.language_code
-    key = "trigger_invoice"
+    key = "subscribe_main"
     return await send_or_edit_message(
         target,
         bot=bot,
         key=key,
         lang=lang,
-        text="Оплати підписку для початку",
-        keyboard=None,
+        text=t(lang, key),
+        keyboard=subscribe_main_keyboard(lang),
+        try_edit=try_edit,
+        photo=get_image(lang, key),
+        chat_id=user.id
+    )
+
+
+async def favorites(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        total: int=0) -> Message:
+    '''
+    сообщения выбора животных
+    '''
+    lang = user.language_code
+    key = "favorites"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(total=total),
+        keyboard=get_favorites_keyboard(lang) if total else None,
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def successful_subscription(
+        target: Message | CallbackQuery=None,
+        user: User=None,
+        bot: Bot=None,
+        try_edit: bool=False,
+        payload: dict=None) -> Message:
+    '''
+    '''
+    lang = user.language_code
+    key = "successful_subscription"
+    payload = payload or {}
+    days = payload.get("days", "---")
+    valid_to = user.subscription_until_str
+    return await send_or_edit_message(
+        target,
+        bot=bot,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(days=days, valid_to=valid_to),
         try_edit=try_edit,
         photo=get_image(lang, key),
         chat_id=user.id
