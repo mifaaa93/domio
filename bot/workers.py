@@ -24,10 +24,11 @@ from db.repo_async import (
     mark_sending,
     mark_sent,
     mark_retry,
+    get_saved_listing_ids,
 )  # замените на ваш путь
 from bot.keyboards.listing import get_under_listing_btns
 from bot.texts import listing_t
-from bot.utils.messages import trigger_invoice, successful_subscription
+from bot.utils.messages import trigger_invoice, successful_subscription, successful_subscription_channel
 
 
 logger = logging.getLogger("bot.worker")
@@ -175,7 +176,7 @@ async def _send_photo_with_retries(
 # ==========================
 # ОТПРАВКА ЛИСТИНГА ЮЗЕРУ
 # ==========================
-async def send_listing_to_user(bot: Bot, session: AsyncSession, user: User, listing: Listing) -> bool:
+async def send_listing_to_user(bot: Bot, user: User, listing: Listing) -> bool:
     """
     Отправляет листинг юзеру.
     - есть tg_photo_id -> отправляем фото+caption
@@ -194,7 +195,10 @@ async def send_listing_to_user(bot: Bot, session: AsyncSession, user: User, list
         rooms=listing.rooms,
         description=listing.get_description_local(lang, 250),
     )
-    btns = get_under_listing_btns(listing, user)
+    # saved_ids — забираем отдельной короткой сессией
+    async with get_async_session() as s:
+        saved_ids = await get_saved_listing_ids(s, user)
+    btns = get_under_listing_btns(listing, user, saved_ids)
 
     try:
         # 1) tg_photo_id уже есть
@@ -221,10 +225,13 @@ async def send_listing_to_user(bot: Bot, session: AsyncSession, user: User, list
                 # кэшируем самого "большого" варианта фото
                 try:
                     file_id = msg.photo[-1].file_id
-                    if not listing.tg_photo_id:
-                        listing.tg_photo_id = file_id
-                        listing.updated_at = datetime.now(timezone.utc)
-                        await session.commit()
+                    async with get_async_session() as s:
+                        # важно получить актуальный listing из БД (иначе другой воркер мог изменить)
+                        db_listing = await s.get(Listing, listing.id)
+                        if db_listing and not db_listing.tg_photo_id:
+                            db_listing.tg_photo_id = file_id
+                            db_listing.updated_at = datetime.now(timezone.utc)
+                            await s.commit()
                 except Exception as e:
                     logger.exception(f"Failed to save tg_photo_id for listing {listing.id}: {e}")
                 return True
@@ -236,12 +243,18 @@ async def send_listing_to_user(bot: Bot, session: AsyncSession, user: User, list
 
     except TelegramForbiddenError as e:
         # пользователь заблокировал бота / нет прав писать
-        await _deactivate_user(session, user, reason=str(e))
+        async with get_async_session() as s:
+            db_user = await s.get(User, user.id)
+            if db_user:
+                await _deactivate_user(s, db_user, reason=str(e))
         return False
     except TelegramBadRequest as e:
         # чат не найден / бот заблокирован / иные "постоянные" причины
         if _is_block_or_missing_chat_error(e):
-            await _deactivate_user(session, user, reason=str(e))
+            async with get_async_session() as s:
+                db_user = await s.get(User, user.id)
+                if db_user:
+                    await _deactivate_user(s, db_user, reason=str(e))
             return False
         # прочие BadRequest (вроде неверного markup), логируем и фейлим, но юзера не трогаем
         logger.warning(f"BadRequest for {chat_id}: {e}")
@@ -254,11 +267,10 @@ async def send_listing_to_user(bot: Bot, session: AsyncSession, user: User, list
 # ==========================
 # ОБРАБОТКА ОДНОГО ЛИСТИНГА
 # ==========================
-async def process_claimed_listing(bot: Bot, session: AsyncSession, listing: Listing) -> tuple[int, int]:
+async def process_claimed_listing(bot: Bot, users: list[User], listing: Listing) -> tuple[int, int]:
     """
     Рассылает listing всем релевантным пользователям.
     """
-    users: list[User] = await get_users_for_listing(session, listing)
     if not users:
         logger.info(f"[LISTING] {listing.id}: no recipients")
         return (0, 0)
@@ -267,7 +279,7 @@ async def process_claimed_listing(bot: Bot, session: AsyncSession, listing: List
 
     async def worker(u: User):
         async with sem:
-            return await send_listing_to_user(bot, session, u, listing)
+            return await send_listing_to_user(bot, u, listing)
 
     results = await asyncio.gather(*(worker(u) for u in users), return_exceptions=False)
     ok = sum(1 for r in results if r)
@@ -299,7 +311,12 @@ async def pipeline_new_listings_users(bot: Bot, shutdown_event: asyncio.Event):
                     continue
 
                 try:
-                    await process_claimed_listing(bot, session, listing)
+                    # получаем юзеров (и всё нужное) с отдельной сессией
+                    async with get_async_session() as s:
+                        users: list[User] = await get_users_for_listing(s, listing)
+
+                    # а рассылку делаем уже без «общей» сессии
+                    await process_claimed_listing(bot, users, listing)
                 except Exception as e:
                     logger.exception(f"[LISTING] processing failed (id={listing.id}): {e}")
                     # не откатываем is_sended, чтобы избежать дублей
@@ -337,18 +354,24 @@ async def pipeline_scheduled_messages(bot: Bot, shutdown_event: asyncio.Event):
                 sem = asyncio.Semaphore(P_CONCURRENCY)
 
                 async def handle_one(m: ScheduledMessage):
+                    # 1) mark_sending — отдельная короткая сессия
                     try:
-                        await mark_sending(session, m.id)
+                        async with get_async_session() as s:
+                            await mark_sending(s, m.id)
                     except Exception as e:
                         logger.exception(f"[SCHED] mark_sending failed for {m.id}: {e}")
                         return
 
-                    ok = await send_scheduled_message(bot, session, m)
+                    # 2) отправка — без БД-сессии
+                    ok = await send_scheduled_message(bot, m)
+
+                    # 3) finalize — отдельная короткая сессия
                     try:
-                        if ok:
-                            await mark_sent(session, m.id)
-                        else:
-                            await mark_retry(session, m.id, last_error="send failed")
+                        async with get_async_session() as s:
+                            if ok:
+                                await mark_sent(s, m.id)
+                            else:
+                                await mark_retry(s, m.id, last_error="send failed")
                     except Exception as e:
                         logger.exception(f"[SCHED] finalize failed for {m.id}: {e}")
 
@@ -360,7 +383,7 @@ async def pipeline_scheduled_messages(bot: Bot, shutdown_event: asyncio.Event):
         logger.info("⏹ Pipeline:scheduled stopped")
 
 
-async def send_scheduled_message(bot: Bot, session: AsyncSession, msg: ScheduledMessage) -> bool:
+async def send_scheduled_message(bot: Bot, msg: ScheduledMessage) -> bool:
     """
     Универсальная отправка ScheduledMessage:
       - chat_type: private / channel
@@ -378,8 +401,12 @@ async def send_scheduled_message(bot: Bot, session: AsyncSession, msg: Scheduled
     try:
         # Можно разветвить логику по типу (пример)
         if mtype == MessageType.INVOICE and sub_type=="done":
+            # юзеру про подписку
             user = msg.user
-            message = await successful_subscription(user=user, bot=bot, payload=payload)
+            if msg.chat_type == ChatType.PRIVATE:
+                message = await successful_subscription(user=user, bot=bot, payload=payload)
+            elif msg.chat_type == ChatType.CHANNEL:
+                message = await successful_subscription_channel(user=user, bot=bot, payload=payload, chat_id=msg.chat_id)
             return True
     
         elif mtype == MessageType.INVOICE:
@@ -400,12 +427,19 @@ async def send_scheduled_message(bot: Bot, session: AsyncSession, msg: Scheduled
     except TelegramForbiddenError as e:
         # Если пользователь есть и это приватный чат — деактивируем
         if msg.chat_type == ChatType.PRIVATE and msg.user:
-            await _deactivate_user(session, msg.user, reason=str(e))
+            async with get_async_session() as s:
+                # подстрахуемся, что юзер актуальный
+                user = await s.get(User, msg.user.id)
+                if user:
+                    await _deactivate_user(s, user, reason=str(e))
         return True
     except TelegramBadRequest as e:
         if _is_block_or_missing_chat_error(e):
             if msg.chat_type == ChatType.PRIVATE and msg.user:
-                await _deactivate_user(session, msg.user, reason=str(e))
+                async with get_async_session() as s:
+                    user = await s.get(User, msg.user.id)
+                    if user:
+                        await _deactivate_user(s, user, reason=str(e))
             return True
         logger.warning(f"[SCHED] BadRequest for {chat_id}: {e}")
         return False

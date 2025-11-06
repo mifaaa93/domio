@@ -1,17 +1,17 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from bot.texts import btn, marker_ok
 from bot.utils.helpers import add_query_params
 from config import METERS_LIST, MINIAPP_URL
-from db.models import City, District
+from db.models import City, District, User
 
 
-def get_main_menu(lang: str | None = None) -> ReplyKeyboardMarkup:
+def get_main_menu(user: User) -> ReplyKeyboardMarkup:
     """
     Возвращает основное меню (reply-клавиатура) с локализованными кнопками.
     """
-    return ReplyKeyboardMarkup(
-        keyboard=[
+    lang = user.language_code
+    keyboard=[
             [
                 KeyboardButton(text=f"{btn(lang, 'search')}"),
                 KeyboardButton(text=f"{btn(lang, 'subscribe')}"),
@@ -34,8 +34,12 @@ def get_main_menu(lang: str | None = None) -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text=f"{btn(lang, 'reviews')}"),
                 KeyboardButton(text=f"{btn(lang, 'help')}"),
+                KeyboardButton(text=f"{btn(lang, 'settings')}"),
             ],
-        ],
+        ]
+    
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
         resize_keyboard=True,
         input_field_placeholder=btn(lang, "placeholder_main_menu"),
     )

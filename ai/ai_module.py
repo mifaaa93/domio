@@ -30,6 +30,8 @@ class InputData(BaseModel):
     title: str
     description: str
     city: str
+    district: str
+    parsed_address: str
 
 class LangBlock(BaseModel):
     title: str
@@ -214,6 +216,8 @@ def process_listing_one_call(data: Dict[str, Any]) -> Dict[str, Any]:
     )
     USER = (
         f"City (hint): {inp.city}\n"
+        f"District (hint): {inp.district}\n"
+        f"Parsed address (hint): {inp.parsed_address}"
         f"Title (PL): {inp.title}\n"
         f"Description (PL): {inp.description}\n"
         "Return ONLY the JSON object described above."

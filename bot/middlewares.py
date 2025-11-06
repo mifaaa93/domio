@@ -1,42 +1,15 @@
 from aiogram import BaseMiddleware
-from aiogram.types import Message, CallbackQuery, Update, Chat, User as TgUser
+from aiogram.types import Chat, User as TgUser
+from aiogram.types.update import Update
 from typing import Callable, Dict, Any, Awaitable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select, null, func
 from db.session import get_async_session
 from db.models import User
 import datetime
 
 
-class PrivateChatOnlyMiddleware(BaseMiddleware):
-    """
-    Middleware, который пропускает только личные чаты (private).
-    Все апдейты из групп, супергрупп и каналов игнорируются.
-    """
-
-    async def __call__(
-        self,
-        handler: Callable[[Any, Dict[str, Any]], Awaitable[Any]],
-        event: Any,
-        data: Dict[str, Any],
-    ) -> Any:
-        chat_type = None
-
-        if isinstance(event, Message):
-            chat_type = event.chat.type
-        elif isinstance(event, CallbackQuery):
-            if event.message:
-                chat_type = event.message.chat.type
-        elif isinstance(event, Update):
-            msg = event.message or event.edited_message or event.callback_query
-            if msg:
-                inner = msg.message if hasattr(msg, "message") else msg
-                if getattr(inner, "chat", None):
-                    chat_type = inner.chat.type
-
-        if chat_type != "private":
-            return  # просто игнорируем
-        return await handler(event, data)
 
 class PrivateChatOnlyMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
@@ -62,38 +35,25 @@ class DBSessionMiddleware(BaseMiddleware):
 
 
 class UserActivityMiddleware(BaseMiddleware):
-    """
-    Middleware для автообновления пользователя:
-    - создаёт запись, если user не найден (UPSERT)
-    - обновляет username / first_name / last_name / last_active_at
-    - сохраняет referrer при первом запуске
-    """
-
-    async def __call__(
-        self,
-        handler: Callable[[Any, Dict[str, Any]], Awaitable[Any]],
-        event: Any,
-        data: Dict[str, Any],
-    ) -> Any:
+    async def __call__(self, handler, event: Update, data: dict):
         session: AsyncSession | None = data.get("session")
-        if not session:
-            async with get_async_session() as temp_sess:
-                data["session"] = temp_sess
-                session = temp_sess
 
+        # Если нет сессии — откроем И ДЕРЖИМ до конца обработки
+        if session is None:
+            async with get_async_session() as session:
+                data["session"] = session
+                return await self._process(handler, event, data, session)
+        else:
+            return await self._process(handler, event, data, session)
+
+    async def _process(self, handler, event: Update, data: dict, session: AsyncSession):
         # --- извлекаем Telegram-пользователя ---
         from_user: TgUser | None = getattr(event, "from_user", None)
-        if not from_user:
-            if isinstance(event, CallbackQuery):
-                from_user = event.from_user
-            elif isinstance(event, Message):
-                from_user = event.from_user
-            elif isinstance(event, Update):
-                if event.message:
-                    from_user = event.message.from_user
-                elif event.callback_query:
-                    from_user = event.callback_query.from_user
-
+        if event.message:
+            from_user = event.message.from_user
+        if event.callback_query:
+            from_user = event.callback_query.from_user
+        
         if not from_user:
             return await handler(event, data)
 
@@ -103,33 +63,39 @@ class UserActivityMiddleware(BaseMiddleware):
         last_name = from_user.last_name
         now = datetime.datetime.now(datetime.timezone.utc)
 
-        # --- извлекаем ref_id из /start ---
-        ref_id = None
-        if isinstance(event, Message) and event.text and event.text.startswith("/start"):
-            parts = event.text.split(maxsplit=1)
+        # --- реферал (NULL если нет такого пользователя) ---
+        ref_value = null()
+        if event.message and event.message.text and event.message.text.startswith("/start"):
+            parts = event.message.text.split(maxsplit=1)
             if len(parts) == 2 and parts[1].isdigit():
                 ref_id = int(parts[1])
-
-        # --- формируем UPSERT ---
-        stmt = insert(User).values(
-            id=user_id,
-            username=username,
-            first_name=first_name,
-            last_name=last_name,
-            registered_at=now,
-            last_active_at=now,
-            is_active=True,
-            referrer_id=ref_id if ref_id and ref_id != user_id else None,
-        ).on_conflict_do_update(
-            index_elements=[User.id],
-            set_={
-                "username": username,
-                "first_name": first_name,
-                "last_name": last_name,
-                "last_active_at": now,
-                "is_active": True,
-            },
-        ).returning(User)
+                if ref_id and ref_id != user_id:
+                    ref_value = select(User.id).where(User.id == ref_id).scalar_subquery()
+        # --- UPSERT ---
+        stmt = (
+            insert(User)
+            .values(
+                id=user_id,
+                username=username,
+                first_name=first_name,
+                last_name=last_name,
+                registered_at=now,
+                last_active_at=now,
+                is_active=True,
+                referrer_id=ref_value,  # ← пишем при ПЕРВОЙ вставке
+            )
+            .on_conflict_do_update(
+                index_elements=[User.id],
+                set_={
+                    "username": username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "last_active_at": now,
+                    "is_active": True,
+                   },
+            )
+            .returning(User)
+        )
 
         result = await session.execute(stmt)
         user = result.scalar_one()

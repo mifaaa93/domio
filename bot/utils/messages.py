@@ -4,10 +4,12 @@ from bot.texts import t
 from bot.keyboards.lang import get_language_keyboard
 from bot.keyboards.menu import *
 from bot.keyboards.subs import *
+from bot.keyboards.settings import *
 from aiogram.types import Message, CallbackQuery
 from aiogram import Bot
 from db.models import User, District, City, UserSearch
-
+from config import BOT_URL
+from bot.utils.helpers import add_query_params
 
 async def send_language_prompt(target: Message | CallbackQuery, user: User, try_edit: bool=False) -> Message:
     lang = user.language_code
@@ -44,7 +46,7 @@ async def send_main_menu(target: Message | CallbackQuery, user: User, try_edit: 
         key=key,
         lang=lang,
         text=t(lang, key),
-        keyboard=get_main_menu(lang),
+        keyboard=get_main_menu(user),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -378,4 +380,81 @@ async def successful_subscription(
         try_edit=try_edit,
         photo=get_image(lang, key),
         chat_id=user.id
+    )
+
+
+async def successful_subscription_channel(
+        user: User=None,
+        bot: Bot=None,
+        payload: dict=None,
+        chat_id: int=None) -> Message:
+    '''
+    инфо в канал когда подписка активирована
+    '''
+    payload = payload or {}
+    days = payload.get("days", "---")
+    valid_to = user.subscription_until_str
+    user_link = user.get_link if user else "----"
+    text = f"У {user_link} активована підписка на {days} дні(-ів)\n\nАктивна до: <b>{valid_to}</b>"
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        disable_web_page_preview=True
+    )
+
+
+async def new_user_channel(
+        user: User=None,
+        bot: Bot=None,
+        payload: dict=None,
+        chat_id: int=None) -> Message:
+    '''
+    инфо в канал когда пришел новый юзер
+    '''
+    payload = payload or {}
+    user_link = user.get_link if user else "----"
+    text = f"Новий користувач: {user_link}"
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        disable_web_page_preview=True
+    )
+
+async def settings_main(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    сообщения настройки
+    '''
+    lang = user.language_code
+    key = "settings"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_settings_keyboard(user),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+async def earn_with_domio(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    реферальное меню
+    '''
+    lang = user.language_code
+    key = "earn_with_domio"
+    url = add_query_params(BOT_URL, {"start": user.id})
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(url=url),
+        keyboard=get_settings_keyboard(user),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
     )

@@ -85,7 +85,13 @@ def _coerce_rooms(value) -> int | None:
 
 def _build_ai_input(l: Listing) -> dict:
     city_str = getattr(getattr(l, "city", None), "name_pl", None) or ""
-    return {"title": l.title or "", "description": l.description or "", "city": city_str}
+    distr_str = getattr(getattr(l, "district", None), "name_pl", None) or ""
+    return {
+        "title": l.title or "",
+        "description": l.description or "",
+        "city": city_str,
+        "district": distr_str,
+        "parsed_address": l.address or ""}
 
 def _apply_translations(l: Listing, result: dict) -> bool:
     updated = False
@@ -107,11 +113,10 @@ def _apply_translations(l: Listing, result: dict) -> bool:
     if desc_uk and desc_uk != l.description_uk:
         l.description_uk = desc_uk; updated = True
 
-    if not l.address and "address" in (result or {}):
-        addr = result.get("address")
-        if addr and addr != l.address:
-            l.address = addr
-
+    addr = result.get("address")
+    if addr and addr != l.address:
+        l.address = addr
+    
     if not l.rooms and "rooms" in (result or {}):
         new_rooms = _coerce_rooms(result.get("rooms"))
         if new_rooms is not None and new_rooms != l.rooms:

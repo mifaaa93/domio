@@ -71,12 +71,12 @@ def build_thread_specs() -> dict[str, callable]:
     Каждая фабрика возвращает уже стартованный Thread.
     """
     return {
-        "olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
-        "otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
-        "morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
-        "nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
-        "checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
-        "translator": lambda: run_thread(lambda: start_translation_pool(stop_event), "translator"),
+        #"olx":     lambda: run_thread(lambda: start_olx(stop_event), "olx"),
+        #"otodom":  lambda: run_thread(lambda: start_otodom(stop_event), "otodom"),
+        #"morizon": lambda: run_thread(lambda: start_morizone(stop_event), "morizon"),
+        #"nieruch": lambda: run_thread(lambda: start_nieruch(stop_event), "nieruch"),
+        #"checker": lambda: run_thread(lambda: check_actual_listings_sync(stop_event), "checker"),
+        #"translator": lambda: run_thread(lambda: start_translation_pool(stop_event), "translator"),
     }
 
 def start_threads(thread_specs: dict[str, callable]) -> dict[str, threading.Thread]:

@@ -9,11 +9,12 @@ class CacheAllStatic(StaticFiles):
     async def get_response(self, path: str, scope):
         resp = await super().get_response(path, scope)
         if resp.status_code == 200:
-            ct = resp.headers.get("Content-Type", "")
-            if "text/html" not in ct.lower():
-                resp.headers["Cache-Control"] = "public, max-age=3600"
-            else:
-                resp.headers["Cache-Control"] = "no-cache"
+            resp.headers["Cache-Control"] = "no-store"
+            #ct = resp.headers.get("Content-Type", "")
+            #if "text/html" not in ct.lower():
+                #resp.headers["Cache-Control"] = "public, max-age=3600"
+            #else:
+                #resp.headers["Cache-Control"] = "no-cache"
         return resp
 
 

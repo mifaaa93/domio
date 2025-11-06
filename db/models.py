@@ -5,6 +5,7 @@ from sqlalchemy import (
     String, Integer, BigInteger, Numeric, Boolean, DateTime, Text, ForeignKey,
     Index, UniqueConstraint, CheckConstraint, Computed, text
 )
+from urllib.parse import quote_plus
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -12,6 +13,7 @@ from sqlalchemy import Enum as SAEnum
 from enum import Enum
 from time import time
 from typing import Any, Optional
+import html
 
 
 
@@ -183,6 +185,18 @@ class Listing(Base):
     
 
     @property
+    def map_url(self) -> str:
+        '''
+        локация (вместе со вшитой ссылкой на карты)
+        '''
+        if self.address:
+            encoded_address = quote_plus(self.address)
+            return f"https://www.google.com/maps?q={encoded_address}"
+        return None
+
+
+
+    @property
     def first_photo(self) -> str:
         '''
         '''
@@ -284,6 +298,8 @@ class User(Base):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    
+    recurring_on: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
 
     referrer_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -324,17 +340,32 @@ class User(Base):
         # приводим к таймзоне Варшавы (можешь поменять на нужную)
         if not self.subscription_until:
             return "----"
-        try:
-            tz = ZoneInfo("Europe/Warsaw")
-            local_dt = self.subscription_until.astimezone(tz)
-        except Exception:
-            # fallback: без конвертации
-            local_dt = self.subscription_until
 
+        dt = self.subscription_until
+        # Если вдруг дата на всякий случай наивная — считаем её UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        local_dt = dt.astimezone()   # ← локальная TZ сервера
         return local_dt.strftime("%d.%m.%y %H:%M")
         
 
+    @property
+    def display_name(self) -> str:
+        name = " ".join(filter(None, [self.first_name, self.last_name])) or (self.username and f"@{self.username}") or "User"
+        return html.escape(name)
 
+
+    @property
+    def get_link(self) -> str:
+        """
+        кликабельная ссылка на юзера
+        """
+        if self.username:
+            href = f"https://t.me/{self.username}"
+        else:
+            href = f"tg://user?id={self.id}"
+        return f'<a href="{href}">{self.display_name}</a>'  
 
     @property
     def buyer(self) -> dict:

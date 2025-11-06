@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Request
 
 from app.deps import Db, PayUClientDep  # Db = Annotated[AsyncSession, Depends(db_session_dep)]
-from config import LOG_DIR, PAYU_SANDBOX
+from config import LOG_DIR, PAYU_SANDBOX, SUBSCRIBES_CHANNEL
 from db.models import InvoiceStatus, InvoiceType, MessageType, ChatType, User
 from db.repo_async import (
     attach_payu_order_refs,
@@ -181,6 +181,14 @@ async def _process_payu_event(
                                 chat_type=ChatType.PRIVATE,
                                 payload={"from": "upay", "days": inv.days, "sub_type": "done"},
                                 user_id=user.id
+                                )
+                            await schedule_message(
+                                session,
+                                MessageType.INVOICE,
+                                chat_type=ChatType.CHANNEL,
+                                payload={"from": "upay", "days": inv.days, "sub_type": "done"},
+                                user_id=user.id,
+                                chat_id=SUBSCRIBES_CHANNEL
                                 )
                 except Exception:
                     log.exception("Failed to add sub for user orderId=%s", order_id)

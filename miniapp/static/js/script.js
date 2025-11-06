@@ -134,7 +134,7 @@ function renderApartment(a, pageTag) {
   const isSaved = a.saved === true;
   const saveText = isSaved ? t('remove') : t('save');
   const saveIcon = isSaved ? '/miniapp/static/images/remove.png' : '/miniapp/static/images/save.png';
-  const mapq = [a.city_distr, a.address].filter(Boolean).join(', ');
+  const mapq = a.address?.trim() || a.city_distr?.trim() || "";
   const commissionText = a.no_comission ? t('no_commission') : t('commission');
   const propertyType = a.property_type ? t(a.property_type) : "";
   col.innerHTML = `

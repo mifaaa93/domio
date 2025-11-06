@@ -11,7 +11,7 @@ from bot.texts import alert_t
 from bot.utils.messages import *
 from bot.utils.helpers import parse_price
 from bot.states import PriceStates
-from config import CITIES_STR, CITIES_STR_SALE
+from config import CITIES_STR
 
 router = Router()
 

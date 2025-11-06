@@ -143,10 +143,25 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "en": "✅ Your subscription is active for {days} day(s) until {valid_to}",
         "pl": "✅ Masz aktywną subskrypcję na {days} dni, ważną do {valid_to}"
     },
+    "settings": {
+        "uk": "⚙️ Налаштування",
+        "en": "⚙️ Settings",
+        "pl": "⚙️ Ustawienia",
+    },
+    "earn_with_domio": {
+        "uk": "Твоє реферальне посилання: {url}",
+        "en": "Your referral link: {url}",
+        "pl": "Twój link polecający: {url}",
+    },
 }
 
 BUTTONS: Dict[str, Dict[Lang, str]] = {
     # --- Основное меню ---
+    "settings": {
+        "uk": "⚙️ Налаштування",
+        "en": "⚙️ Settings",
+        "pl": "⚙️ Ustawienia",
+    },
     "search": {
         "uk": "🔍 Пошук квартир",
         "en": "🔍 Search apartments",
@@ -206,6 +221,11 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "uk": "🌐 Мова",
         "en": "🌐 Language",
         "pl": "🌐 Język",
+    },
+    "recurring": {
+        "uk": "Вимкнути автопродовження",
+        "en": "Turn off auto-renewal",
+        "pl": "Wyłącz automatyczne odnawianie",
     },
     "back": {
         "uk": "⬅️ Назад",
@@ -387,7 +407,11 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "en": "View all",
         "pl": "Zobacz wszystkie"
     },
-
+    "map_btn": {
+        "uk": "🗺 Карта",
+        "en": "🗺 Map",
+        "pl": "🗺 Mapa"
+    },
 }
 
 LISTINGS = {
@@ -436,6 +460,11 @@ ALERTS: Dict[str, Dict[Lang, str]] = {
         "en": "That plan no longer exists",
         "pl": "Taki plan już nie istnieje",
     },
+    "listing_deleted": {
+        "uk": "Оголошення вже неактуальне",
+        "en": "This listing is no longer available",
+        "pl": "To ogłoszenie jest już nieaktualne",
+    }
 }
 
 def t(lang: Lang | None, key: str) -> str:

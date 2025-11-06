@@ -1,18 +1,24 @@
 <!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Domio • Invoice</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Domio</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/miniapp/static/css/styles.css">
+  <link rel="stylesheet" href="/miniapp/static/css/styles.css?v=2025-11-05-1">
   <link rel="icon" href="/miniapp/static/favicon.png">
 </head>
 <body class="create-invoice">
+  <img src="/miniapp/static/images/logo.png" class="main_logo"/>
   <div class="wrap">
     <div class="spinner" aria-hidden="true"></div>
     <div class="msg" id="msg" aria-live="polite">Готуємо оплату…</div>
+
+    <!-- NEW: кнопка для явного клика и подсказка -->
+    <button id="payBtn" class="btn btn-outline-secondary" style="display:none;"></button>
+    <small id="copyHint" class="hint" style="display:none;"></small>
   </div>
-  <script src="./create_invoice.js"></script>
+  <script src="./create_invoice.js?v=2025-11-05-1"></script>
 </body>
 </html>
