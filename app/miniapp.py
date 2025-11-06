@@ -31,6 +31,8 @@ async def get_apartments(data: JsonDict, session: Db, auth_user: Auth):
     page = data.get("page")
     cat = data.get('cat', 'listing')
     lang = data.get('lang')
+    sort_field = data.get('sort_field')
+    sort_dir = data.get('sort_dir')
     user_data: dict = auth_user.get("user", {})
     if not user_data:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -38,7 +40,7 @@ async def get_apartments(data: JsonDict, session: Db, auth_user: Auth):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid user")
 
-    apartments = await get_apartments_for_user(session, user, page, cat, lang)  # верни список словарей
+    apartments = await get_apartments_for_user(session, user, page, cat, lang, sort_field, sort_dir)  # верни список словарей
 
     return apartments
 

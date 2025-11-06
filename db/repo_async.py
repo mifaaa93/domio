@@ -1,12 +1,12 @@
 # db\repo_async.py
 from __future__ import annotations
 from datetime import datetime, timezone, timedelta
-from typing import Any, Optional, Sequence
-from decimal import Decimal
+from typing import Any, Optional, Literal
+from sqlalchemy.sql import ColumnElement
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, or_, and_, exists, update, text
+from sqlalchemy import select, func, or_, and_, exists, update, text, asc, desc
 from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing
 from db.models import ScheduledMessage, ScheduledStatus, MessageType, ChatType
 from db.models import (
@@ -23,6 +23,60 @@ STATUS_RANK: dict[InvoiceStatus, int] = {
     InvoiceStatus.CANCELED: 100,   # терминальные
     InvoiceStatus.REJECTED: 100,
 }
+
+# Разрешённые значения
+SortField = Literal["date", "price", "area", "rooms", "id", "saved"]
+SortDir   = Literal["asc", "desc"]
+
+def build_order_by_two(sort_field: str | None,
+                       sort_dir: str | None,
+                       cat: str) -> list[ColumnElement]:
+    """
+    sort_field: date | price | area | rooms | id | saved (saved — только для cat='saved')
+    sort_dir:   asc | desc
+    cat:        'listing' | 'saved'
+    """
+    sf = (sort_field or "date").lower()
+    sd = (sort_dir or "desc").lower()
+    is_desc = (sd != "asc")
+
+    # безопасные значения
+    allowed_fields = {"date", "price", "area", "rooms", "id"}
+    if cat == "saved":
+        allowed_fields.add("saved")
+
+    if sf not in allowed_fields:
+        sf = "date"
+
+    from db.models import Listing, SavedListing  # локальный импорт, если нужно
+
+    def order(col, is_desc: bool):
+        # NULLS LAST, чтобы пустые значения не шли наверх
+        return (col.desc() if is_desc else col.asc()).nullslast()
+
+    order_by: list[ColumnElement] = []
+
+    if sf == "date":
+        col = SavedListing.created_at if cat == "saved" else Listing.created_at
+        order_by.append(order(col, is_desc))
+    elif sf == "price":
+        order_by.append(order(Listing.price, is_desc))
+    elif sf == "area":
+        order_by.append(order(Listing.area_m2, is_desc))
+    elif sf == "rooms":
+        order_by.append(order(Listing.rooms, is_desc))
+    elif sf == "id":
+        order_by.append(order(Listing.id, is_desc))
+    elif sf == "saved" and cat == "saved":
+        order_by.append(order(SavedListing.created_at, is_desc))
+    else:
+        # fallback — по дате
+        col = SavedListing.created_at if cat == "saved" else Listing.created_at
+        order_by.append(order(col, True))
+
+    # стабилизатор порядка
+    order_by.append(Listing.id.desc().nullslast())
+    return order_by
 
 
 async def get_user_by_token(session: AsyncSession, user_id: int) -> User | None:
@@ -107,6 +161,7 @@ async def find_listings_by_search(
     limit: int = 50,
     offset: int = 0,
     return_total: bool = False,
+    order_by: list=None
 ):
     """
     Ищет объявления Listing, подходящие под фильтр UserSearch.
@@ -191,6 +246,8 @@ async def find_listings_by_search(
     if search.no_comission:
         conditions.append(Listing.no_comission.is_(True))
     # Базовый SELECT
+    if not order_by:
+        order_by = [Listing.scraped_at.desc(), Listing.id.desc()]
     stmt = (
         select(Listing)
         .options(
@@ -198,7 +255,7 @@ async def find_listings_by_search(
             selectinload(Listing.district),
         )
         .where(*conditions)
-        .order_by(Listing.scraped_at.desc(), Listing.id.desc())
+        .order_by(*order_by)
         .limit(limit)
         .offset(offset)
     )
@@ -397,7 +454,14 @@ async def get_saved_listing_ids(session: AsyncSession, user: User) -> list[int]:
     return result.all()
 
 
-async def get_apartments_for_user(session: AsyncSession, user: User, page: int, cat: str, lang: str = None) -> dict:
+async def get_apartments_for_user(
+        session: AsyncSession,
+        user: User,
+        page: int,
+        cat: str,
+        lang: str=None,
+        sort_field: str=None,
+        sort_dir: str=None) -> dict:
     """
     cat: 'listing' | 'saved' (добавлено)
     Возвращает:
@@ -436,7 +500,7 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
                     selectinload(Listing.city),
                     selectinload(Listing.district),
                 )
-                .order_by(SavedListing.created_at.desc(), Listing.id.desc())
+                .order_by(*build_order_by_two(sort_field, sort_dir, cat))
                 .limit(limit)
                 .offset(offset)
             )
@@ -472,7 +536,8 @@ async def get_apartments_for_user(session: AsyncSession, user: User, page: int, 
     if cat == "listing":
         search = await get_user_search(session, user)
         if search.has_confirmed_policy:
-            data, total = await find_listings_by_search(session, search, limit, offset, return_total=True)
+            order_by = build_order_by_two(sort_field, sort_dir, cat)
+            data, total = await find_listings_by_search(session, search, limit, offset, return_total=True, order_by=order_by)
             if total:
                 saved_ids = await get_saved_listing_ids(session, user)
                 saved_ids = set(saved_ids)  # ускорим проверку
