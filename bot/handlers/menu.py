@@ -71,3 +71,21 @@ async def earn_with_domio_btn_press(msg: Message, session: AsyncSession, user: U
     """
     # передаем в search-цепочку (первая стадия выбора типа пошуку)
     await earn_with_domio(msg, user)
+
+@router.message(
+        F.text.in_(btn_tuple("help")))
+async def help_btn_press(msg: Message, session: AsyncSession, user: User, state: FSMContext):
+    """
+    нажата кнопка 🛟 Допомога
+    """
+    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    await help_message(msg, user)
+
+@router.message(
+        F.text.in_(btn_tuple("reviews")))
+async def reviews_btn_press(msg: Message, session: AsyncSession, user: User, state: FSMContext):
+    """
+    нажата кнопка 🗣 Відгуки
+    """
+    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    await reviews(msg, user)

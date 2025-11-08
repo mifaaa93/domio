@@ -8,7 +8,7 @@
   <!-- Swiper CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="/miniapp/static/css/styles.css?v=2025-11-05-1">
+  <link rel="stylesheet" href="/miniapp/static/css/styles.css?v=2025-11-06-1">
   <link rel="icon" href="/miniapp/static/favicon.png">
 </head>
 
@@ -18,7 +18,27 @@
     
     <h2 id="total-title" class="total-title"></h2>
 
-    <img src="/miniapp/static/images/arrow_down.png" class="arrow-down"/>
+    <div class="toolbar" id="sorting-toolbar" role="region" aria-label="Sorting controls">
+      <div class="sortbar" id="sorting-toolbar">
+        <div class="sort-row">
+          <label>
+            <select id="sf-select">
+              <option value="date">Дата</option>
+              <option value="price">Ціна</option>
+              <option value="area">Площа</option>
+              <option value="rooms">Кімнати</option>
+              <option value="id">ID</option>
+              <option value="saved" class="saved-only">Збережено</option>
+            </select>
+          </label>
+          <label>
+            <select id="sd-select">
+              <option value="desc">DESC</option>
+              <option value="asc">ASC</option>
+            </select>
+          </label>
+        </div>
+      </div>
     
     <div id="apartments" class="row"></div>
     <div id="pagination" class="pagination"></div>
@@ -45,6 +65,6 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <!-- Custom JS -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="/miniapp/static/js/script.js?v=2025-11-05-1"></script>
+<script src="/miniapp/static/js/script.js?v=2025-11-06-1"></script>
 </body>
 </html>

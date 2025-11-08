@@ -25,7 +25,7 @@ async def choose_language(callback: CallbackQuery, session: AsyncSession, user: 
     
     elif submenu == "recurring":
         # отключение автопродления
-        await send_language_prompt(callback, user, True)
+        await send_recurring_prompt(callback, user, True)
     
     elif submenu == "settings":
         # кнопка назад в настройки
@@ -33,18 +33,34 @@ async def choose_language(callback: CallbackQuery, session: AsyncSession, user: 
 
 
 
-@router.callback_query(F.data.startswith("lang_"))
+@router.callback_query(F.data.startswith("lang|"))
 async def choose_language(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
-    lang_code = callback.data.split("_", 1)[1]
-    prew_code = user.language_code
+    """
+    изменение языка
+    """
+    lang_code = callback.data.split("|", 1)[1]
     user.language_code = lang_code
     session.add(user)
     await session.commit()
     
     await send_language_set(callback, user)
-    if prew_code is None:
-        await send_main_menu(callback, user)
+    await send_main_menu(callback, user)
 
+
+@router.callback_query(F.data.startswith("recurring|"))
+async def recurring_disable_confirmed(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
+    """
+    юзер нажал кнопку подтвердить отключение автопродления
+    """
+    _, off = callback.data.split("|", 1)
+    if off == "off":
+        user.recurring_on = False
+        session.add(user)
+        await session.commit()
+    await callback.answer(
+        text=alert_t(user.language_code, "recurring_disable_confirmed"),
+        show_alert=True)
+    await settings_main(callback, user, True)
 
 
 @router.callback_query(F.data.startswith("listing|"))

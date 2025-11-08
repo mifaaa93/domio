@@ -8,7 +8,7 @@ from bot.keyboards.settings import *
 from aiogram.types import Message, CallbackQuery
 from aiogram import Bot
 from db.models import User, District, City, UserSearch
-from config import BOT_URL
+from config import BOT_URL, SUPPORT_USERNAME, REVIEWS_URL
 from bot.utils.helpers import add_query_params
 
 async def send_language_prompt(target: Message | CallbackQuery, user: User, try_edit: bool=False) -> Message:
@@ -19,7 +19,7 @@ async def send_language_prompt(target: Message | CallbackQuery, user: User, try_
         key="choose_language",
         lang=lang,
         text=t(lang, key),
-        keyboard=get_language_keyboard(),
+        keyboard=get_language_keyboard(user),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -37,6 +37,19 @@ async def send_language_set(target: Message | CallbackQuery, user: User, try_edi
         photo=get_image(lang, key)
     )
 
+
+async def send_recurring_prompt(target: Message | CallbackQuery, user: User, try_edit: bool=True) -> Message:
+    lang = user.language_code
+    key = "recurring_prompt_disable"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=recurring_prompt_disable(user),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
 
 async def send_main_menu(target: Message | CallbackQuery, user: User, try_edit: bool=False) -> Message:
     lang = user.language_code
@@ -449,12 +462,55 @@ async def earn_with_domio(
     lang = user.language_code
     key = "earn_with_domio"
     url = add_query_params(BOT_URL, {"start": user.id})
+    text = t(lang, key).format(
+        url=url,
+        current=user.referral_balance_current,
+        total=user.referral_earnings_total)
+    
     return await send_or_edit_message(
         target,
         key=key,
         lang=lang,
-        text=t(lang, key).format(url=url),
+        text=text,
         keyboard=get_settings_keyboard(user),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def help_message(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    помощь
+    '''
+    lang = user.language_code
+    key = "support"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(username=SUPPORT_USERNAME),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def reviews(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    отзывы
+    '''
+    lang = user.language_code
+    key = "reviews"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(url=REVIEWS_URL),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )

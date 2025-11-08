@@ -35,12 +35,17 @@ MINIAPP_URL = f"{DOMAIN}/miniapp/"
 UPAY_CALL_URL = f"{DOMAIN}/payments/upay"
 CREATE_INVOICE_URL = f"{DOMAIN}/miniapp/create_invoice/"
 BOT_URL = os.getenv("BOT_URL")
+SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME")
+REVIEWS_URL = os.getenv("REVIEWS_URL")
+REFFERAL_PERCENT = 0.3 # сколько получают реффералы
+
+
 # словарь где хранятся цены подписок
 TARIFFS_DICT = {
     "SUBSCRIPTION": {
-        "test": {'price': 4.99, 'days': 3,   'full': False, 'next': 30, "currency": "PLN"},
-        "2week": {'price': 19.99, 'days': 14, 'full': True,  'next': 14, "currency": "PLN"},
-        "month": {'price': 39.99, 'days': 30, 'full': True,  'next': 30, "currency": "PLN"},
+        "test":  {'price': 4.99,  'days': 3,  'is_test': True,  'next_sub': "2week", "currency": "PLN"},
+        "2week": {'price': 19.99, 'days': 14, 'is_test': False, 'next_sub': "2week", "currency": "PLN"},
+        "month": {'price': 34.99, 'days': 30, 'is_test': False, 'next_sub': "month", "currency": "PLN"},
     }
 }
 

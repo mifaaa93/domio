@@ -143,7 +143,8 @@ async def _process_payu_event(
                 await record_webhook_snapshot(session, inv, payu_raw=None, status=InvoiceStatus[status_str])
 
             # Автоконфирм в песочнице на WAITING_FOR_CONFIRMATION
-            if signature_valid and status_str == "WAITING_FOR_CONFIRMATION" and PAYU_SANDBOX:
+            if signature_valid and status_str == "WAITING_FOR_CONFIRMATION":
+                print("WAITING_FOR_CONFIRMATION")
                 try:
                     resp = await payu.confirm_order_completed(order_id)
                     await mark_confirmed_now(session, inv)
@@ -174,7 +175,7 @@ async def _process_payu_event(
                     if user:
                         if inv.invoice_type == InvoiceType.SUBSCRIPTION:
                             # добавляем подписку юзеру
-                            await add_sub_to_user(session, user, inv.days)
+                            await add_sub_to_user(session, user, inv.days, inv.amount)
                             await schedule_message(
                                 session,
                                 MessageType.INVOICE,

@@ -4,6 +4,15 @@ let totalPages = 1;
 let loading = false;
 const CAT = (window.CAT || "listing").toLowerCase();
 const APP_LANG = (window.APP_LANG || "uk").toLowerCase();
+window.SORT_FIELD = typeof window.SORT_FIELD === "string" ? window.SORT_FIELD : "date"; // date|price|area|rooms|id|saved
+window.SORT_DIR   = (window.SORT_DIR === "asc" || window.SORT_DIR === "desc") ? window.SORT_DIR : "desc";
+const SORT_FIELDS = ["date","price","area","rooms","id","saved"];
+
+function sortPayload() {
+  const field = SORT_FIELDS.includes(window.SORT_FIELD) ? window.SORT_FIELD : "date";
+  const dir   = (window.SORT_DIR === "asc") ? "asc" : "desc";
+  return { sort_field: field, sort_dir: dir };
+}
 
 let tg, initData;
 let totalCountElem = null;
@@ -298,7 +307,8 @@ async function triggerInvoice(initData, base_id) {
       "X-Telegram-Init-Data": tg.initData
     },
     body: JSON.stringify({
-      lang: APP_LANG
+      lang: APP_LANG,
+      ...sortPayload()
     }),
   });
   return response;
@@ -316,7 +326,8 @@ async function openContact(btn) {
       },
       body: JSON.stringify({
         base_id: Number(id),
-        lang: APP_LANG
+        lang: APP_LANG,
+        ...sortPayload()
       })
     });
 
@@ -363,7 +374,8 @@ async function toggleSave(btn) {
       body: JSON.stringify({
         base_id: Number(id),
         action: action,
-        lang: APP_LANG
+        lang: APP_LANG,
+        ...sortPayload()
       })
     });
 
@@ -446,7 +458,8 @@ async function loadPage(p = 1, { scrollToCards = true } = {}) {
       body: JSON.stringify({
         page: Number(p),
         cat: CAT,
-        lang: APP_LANG
+        lang: APP_LANG,
+        ...sortPayload()
       })
     });
 
@@ -523,7 +536,126 @@ function renderPagination() {
 }
 
 
+
+const I18N_SORT = {
+  uk: {
+    asc: "За зростанням",
+    desc: "За спаданням",
+    descHint: "За замовчуванням — за спаданням (DESC)",
+    fields: {
+      date: "Дата",
+      price: "Ціна",
+      area: "Площа",
+      rooms: "Кімнати",
+      id: "ID",
+      saved: "Збережено"
+    }
+  },
+  pl: {
+    asc: "Rosnąco",
+    desc: "Malejąco",
+    descHint: "Domyślnie — malejąco (DESC)",
+    fields: {
+      date: "Data",
+      price: "Cena",
+      area: "Powierzchnia",
+      rooms: "Pokoje",
+      id: "ID",
+      saved: "Zapisano"
+    }
+  },
+  en: {
+    asc: "ASC",
+    desc: "DESC",
+    descHint: "Default — DESC",
+    fields: {
+      date: "Date",
+      price: "Price",
+      area: "Area",
+      rooms: "Rooms",
+      id: "ID",
+      saved: "Saved"
+    }
+  }
+};
+
+
+function applySortingI18n() {
+  const lang = (window.APP_LANG || "uk").toLowerCase();
+  const T = I18N_SORT[lang] || I18N_SORT.uk;
+
+  const bar = document.getElementById("sorting-toolbar");
+  if (!bar) return;
+
+  // Хинт
+  const hintEl = bar.querySelector('.sort-hint, [data-i18n="descHint"]');
+  if (hintEl) {
+    hintEl.setAttribute("data-i18n", "descHint");
+    hintEl.textContent = T.descHint;
+  }
+
+  // Опции селекта поля
+  const sf = bar.querySelector("#sf-select");
+  if (sf) {
+    const FIELD_LABELS = {
+      date:  T.fields.date,
+      price: T.fields.price,
+      area:  T.fields.area,
+      rooms: T.fields.rooms,
+      id:    T.fields.id,
+      saved: T.fields.saved,
+    };
+    Array.prototype.forEach.call(sf.options, function (opt) {
+      if (FIELD_LABELS[opt.value]) opt.textContent = FIELD_LABELS[opt.value];
+    });
+  }
+
+  // Опции селекта направления
+  const sd = bar.querySelector("#sd-select");
+  if (sd) {
+    Array.prototype.forEach.call(sd.options, function (opt) {
+      opt.textContent = (opt.value === "asc") ? T.asc : T.desc;
+    });
+  }
+}
+
+// инициализация сортировки (2 селекта) + автообновление
+function initSortingToolbar() {
+  const sf = document.getElementById("sf-select"); // поле
+  const sd = document.getElementById("sd-select"); // направление
+  if (!sf || !sd) return;
+
+  // скрыть "saved" если не та категория
+  const savedOpt = sf.querySelector('option[value="saved"]');
+  if (savedOpt) savedOpt.hidden = (CAT !== "saved");
+
+  // выставить текущие значения
+  sf.value = SORT_FIELDS.includes(window.SORT_FIELD) ? window.SORT_FIELD : "date";
+  sd.value = (window.SORT_DIR === "asc") ? "asc" : "desc";
+
+  // лёгкий дебаунс, чтобы не спамить запросами
+  let reloadTimer;
+  const reload = () => {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => loadPage(1, { scrollToCards: false }), 60);
+  };
+
+  // изменение поля
+  sf.addEventListener("change", () => {
+    window.SORT_FIELD = sf.value;
+    reload();
+  });
+
+  // изменение направления
+  sd.addEventListener("change", () => {
+    window.SORT_DIR = sd.value;
+    reload();
+  });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  initSortingToolbar();       // <— тут
+  applySortingI18n?.();
   if (!window.Telegram || !Telegram.WebApp) {
     console.warn(t('not_in_tg'));
     return;

@@ -149,9 +149,24 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "pl": "⚙️ Ustawienia",
     },
     "earn_with_domio": {
-        "uk": "Твоє реферальне посилання: {url}",
-        "en": "Your referral link: {url}",
-        "pl": "Twój link polecający: {url}",
+        "uk": "Твоє реферальне посилання:\n{url}\n\nПоточний баланс: {current} PLN\nНараховано за весь час: {total} PLN",
+        "en": "Your referral link:\n{url}\n\nYour current balance: {current} PLN\nTotal earned from referrals: {total} PLN",
+        "pl": "Twój link polecający:\n{url}\n\nAktualny stan konta: {current} PLN\nŁącznie zarobiono z poleceń: {total} PLN",
+    },
+    "recurring_prompt_disable": {
+        "uk": "Ти бажаєш вимкнути автопродовження підписки?",
+        "en": "Do you want to turn off subscription auto-renewal?",
+        "pl": "Chcesz wyłączyć automatyczne odnawianie subskrypcji?",
+    },
+    "support": {
+        "uk": "🆘 <b>Допомога Domio</b>\nЯкщо щось не працює, виникла проблема чи маєш ідею, як зробити Domio ще кращим — напиши нам прямо тут 💬\nМи читаємо всі повідомлення і завжди відповідаємо!\nТвоя думка допомагає нам розвиватися 💛\n{username}",
+        "en": "🆘 <b>Domio Support</b>\nIf something isn’t working, you’ve run into a problem, or you have an idea to make Domio even better — send us a message right here 💬\nWe read every message and always reply!\nYour feedback helps us grow 💛\n{username}",
+        "pl": "🆘 <b>Pomoc Domio</b>\nJeśli coś nie działa, masz problem albo pomysł, jak ulepszyć Domio — napisz do nas tutaj 💬\nCzytamy wszystkie wiadomości i zawsze odpisujemy!\nTwoja opinia pomaga nam się rozwijać 💛\n{username}"
+    },
+    "reviews": {
+        "uk": "🗣 <b>Відгуки про Domio</b>\nХочеш побачити, що кажуть наші користувачі?\nПереглянь реальні відгуки за посиланням нижче 👇\n👉 <a href=\"{url}\">Відгуки про Domio</a>.",
+        "en": "🗣 <b>Reviews about Domio</b>\nWant to see what our users say?\nCheck real reviews at the link below 👇\n👉 <a href=\"{url}\">Reviews about Domio</a>.",
+        "pl": "🗣 <b>Opinie o Domio</b>\nChcesz zobaczyć, co mówią nasi użytkownicy?\nZobacz prawdziwe opinie pod linkiem poniżej 👇\n👉 <a href=\"{url}\">Opinie o Domio</a>."
     },
 }
 
@@ -464,7 +479,12 @@ ALERTS: Dict[str, Dict[Lang, str]] = {
         "uk": "Оголошення вже неактуальне",
         "en": "This listing is no longer available",
         "pl": "To ogłoszenie jest już nieaktualne",
-    }
+    },
+    "recurring_disable_confirmed": {
+        "uk": "Автопродовження вимкнуто",
+        "en": "Auto-renewal disabled",
+        "pl": "Automatyczne odnawianie wyłączone",
+        },
 }
 
 def t(lang: Lang | None, key: str) -> str:

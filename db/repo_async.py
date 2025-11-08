@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, Literal
 from sqlalchemy.sql import ColumnElement
-
+from config import REFFERAL_PERCENT
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_, exists, update, text, asc, desc
@@ -57,7 +57,7 @@ def build_order_by_two(sort_field: str | None,
     order_by: list[ColumnElement] = []
 
     if sf == "date":
-        col = SavedListing.created_at if cat == "saved" else Listing.created_at
+        col = SavedListing.created_at if cat == "saved" else Listing.scraped_at
         order_by.append(order(col, is_desc))
     elif sf == "price":
         order_by.append(order(Listing.price, is_desc))
@@ -71,7 +71,7 @@ def build_order_by_two(sort_field: str | None,
         order_by.append(order(SavedListing.created_at, is_desc))
     else:
         # fallback — по дате
-        col = SavedListing.created_at if cat == "saved" else Listing.created_at
+        col = SavedListing.created_at if cat == "saved" else Listing.scraped_at
         order_by.append(order(col, True))
 
     # стабилизатор порядка
@@ -720,11 +720,16 @@ async def cancel_message(session: AsyncSession, msg_id: int):
     )
     await session.commit()
 
-async def add_sub_to_user(session: AsyncSession, user: User, days: int) -> None:
+async def add_sub_to_user(
+        session: AsyncSession,
+        user: User,
+        days: int,
+        amount: float=None) -> None:
     """
     Продлевает подписку пользователя на `days` суток.
     Если подписки нет или она уже истекла — начинает отсчёт от текущего времени (UTC).
     Возвращает новое значение subscription_until (UTC).
+    если amount то засчитываем реферальный баланс реффералу
     """
     if days <= 0:
         # ничего не меняем — возвращаем текущее значение (или now, если его нет)
@@ -733,8 +738,17 @@ async def add_sub_to_user(session: AsyncSession, user: User, days: int) -> None:
     now = datetime.now(timezone.utc)
     base = user.subscription_until if (user.subscription_until and user.subscription_until > now) else now
     new_until = base + timedelta(days=days)
-
     user.subscription_until = new_until
+    
+    if amount and user.referrer_id:
+        # 
+        value = amount*REFFERAL_PERCENT
+        refferal = await get_user_by_token(session, user.referrer_id)
+        if refferal:
+            refferal.credit_referral(value)
+    if amount:
+        user.recurring_on = True
+
     await session.flush()  # фиксация изменений в текущей транзакции (commit делает вызывающий код)
 
 
@@ -761,7 +775,8 @@ async def create_invoice(
     payu_ext_order_id: Optional[str] = None,
     client_ip: str = None,
     is_test: bool = False,
-    reuse_window_minutes: int = 10,   # ← окно переиспользования
+    next_sub: str=None,
+    reuse_window_minutes: int = 60,   # ← окно переиспользования
 ) -> Invoice:
     """
     Ищет и переиспользует уже созданный инвойс (CREATED + redirect_uri IS NOT NULL)
@@ -805,6 +820,7 @@ async def create_invoice(
         payu_ext_order_id=payu_ext_order_id,
         is_test=is_test,
         client_ip=client_ip,
+        next_sub=next_sub,
         status=InvoiceStatus.CREATED,
     )
     session.add(inv)

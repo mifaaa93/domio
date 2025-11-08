@@ -167,6 +167,9 @@ async def create_invoice_api(
     days = int(invice_data["days"])
     description = invice_data.get("description") or f"Domio {subscribe_type}"
     currency = invice_data.get("currency")
+    is_test = invice_data.get("is_test", True)
+    next_sub = invice_data.get("next_sub")
+
     invoice = await create_invoice(
         session,
         user_id=user.id,
@@ -177,6 +180,8 @@ async def create_invoice_api(
         days=days,
         client_ip=client_ip,
         subscribe_type=subscribe_type,
+        is_test=is_test,
+        next_sub=next_sub
     )
     if invoice.redirect_uri is None:
         # корелляционный ext_order_id, завязанный на id инвойса

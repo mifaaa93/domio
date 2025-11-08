@@ -309,6 +309,25 @@ class User(Base):
         remote_side=[id],
         backref="referrals"
     )
+    # --- Реферальные балансы ---
+    # Текущий доступный баланс (можно списывать при оплате/конвертации и т.д.)
+    referral_balance_current: Mapped[float] = mapped_column(
+        Numeric(14, 2, asdecimal=False),
+        default=0,
+        nullable=False,
+        server_default=text("0"),
+        comment="Текущий доступный реферальный баланс (валюта по договорённости)"
+    )
+
+    # Всего начислено рефералами за всё время (не уменьшается при трате)
+    referral_earnings_total: Mapped[float] = mapped_column(
+        Numeric(14, 2, asdecimal=False),
+        default=0,
+        nullable=False,
+        server_default=text("0"),
+        comment="Суммарно начислено по реферальной программе за всё время"
+    )
+
     # 🔹 дата до которой активна подписка
     subscription_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -329,8 +348,18 @@ class User(Base):
         Index("ix_users_is_active", "is_active"),
         Index("ix_users_registered_at", "registered_at"),
         Index("ix_users_last_active_at", "last_active_at"),
+        Index("ix_users_referral_balance_current", "referral_balance_current"),
     )
 
+
+    def credit_referral(self, amount: float) -> None:
+        """
+        Начислить реферальную сумму: увеличиваем и текущий баланс, и total.
+        amount должен быть > 0
+        """
+        # приведение к двум знакам лучше делать на уровне DB/сервисов
+        self.referral_balance_current = (self.referral_balance_current or 0) + amount
+        self.referral_earnings_total = (self.referral_earnings_total or 0) + amount
 
     @property
     def subscription_until_str(self) -> str:
@@ -760,8 +789,9 @@ class Invoice(Base):
     # тип инвойса (назначение) и "кол-во дней"
     invoice_type: Mapped[InvoiceType] = mapped_column(SAEnum(InvoiceType, name="invoice_type"), default=InvoiceType.SUBSCRIPTION, nullable=False)
     
-    subscribe_type: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    subscribe_type: Mapped[str] = mapped_column(String(64), nullable=True)
     days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    next_sub: Mapped[str] = mapped_column(String(64), nullable=True)
 
     # суммы: в грошах (целые!), валюта
     amount: Mapped[float] = mapped_column(Numeric(10, 2, asdecimal=False), nullable=False)
