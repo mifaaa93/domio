@@ -28,7 +28,12 @@ from db.repo_async import (
 )  # замените на ваш путь
 from bot.keyboards.listing import get_under_listing_btns
 from bot.texts import listing_t
-from bot.utils.messages import trigger_invoice, successful_subscription, successful_subscription_channel
+from bot.utils.messages import (
+    trigger_invoice,
+    successful_subscription,
+    successful_subscription_channel,
+    successful_confirm_earn_channel,
+    )
 
 
 logger = logging.getLogger("bot.worker")
@@ -421,8 +426,12 @@ async def send_scheduled_message(bot: Bot, msg: ScheduledMessage) -> bool:
         elif mtype == MessageType.BROADCAST:
             pass
         elif mtype == MessageType.CUSTOM:
-            pass
+            if payload.get("from") == "confirm_earn":
+                # уведомление в канал что запрошен вывод средств
+                message = await successful_confirm_earn_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
+
         return True
+    
 
     except TelegramForbiddenError as e:
         # Если пользователь есть и это приватный чат — деактивируем

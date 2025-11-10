@@ -298,6 +298,8 @@ class User(Base):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_full_sub: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
     
     recurring_on: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
 
@@ -377,11 +379,35 @@ class User(Base):
 
         local_dt = dt.astimezone()   # ← локальная TZ сервера
         return local_dt.strftime("%d.%m.%y %H:%M")
-        
+    
+    @property
+    def autocontinue_str(self) -> str:
+        '''
+        дата когда подписка будет автоматически продлена
+        '''
+        # приводим к таймзоне Варшавы (можешь поменять на нужную)
+        if not self.subscription_until:
+            return "----"
+
+        dt = self.subscription_until
+        # Если вдруг дата на всякий случай наивная — считаем её UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        local_dt = dt.astimezone()   # ← локальная TZ сервера
+        return local_dt.strftime("%d.%m.%y")
+
+    @property
+    def is_full_sub_active(self) -> bool:
+        '''
+        возвращает тру если у юзера активна подписка и она не тестовая
+        '''
+        return self.subscribed and self.is_full_sub
+
 
     @property
     def display_name(self) -> str:
-        name = " ".join(filter(None, [self.first_name, self.last_name])) or (self.username and f"@{self.username}") or "User"
+        name = " ".join(filter(None, [self.first_name, self.last_name])) or "User"
         return html.escape(name)
 
 
@@ -390,11 +416,12 @@ class User(Base):
         """
         кликабельная ссылка на юзера
         """
+        href = f"tg://user?id={self.id}"
+        res = f'<a href="{href}">{self.display_name}</a>'
         if self.username:
-            href = f"https://t.me/{self.username}"
-        else:
-            href = f"tg://user?id={self.id}"
-        return f'<a href="{href}">{self.display_name}</a>'  
+            res += f" @{self.username}"
+        res += f" (tg_id:{self.id})"
+        return res
 
     @property
     def buyer(self) -> dict:

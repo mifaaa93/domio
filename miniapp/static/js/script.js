@@ -36,8 +36,8 @@ const I18N = {
     ad_removed: "Оголошення було видалене",
     link_unavailable: "Посилання недоступне",
     no_subscription_title: "У тебе немає підписки",
-    no_subscription_msg:
-      "Для доступу до контактів треба оформити підписку Domio",
+    no_subscription_msg: "Для доступу до контактів треба оформити підписку Domio",
+    no_full_sub_msg: "Ця функція доступна лише в повному доступі!",
     pay_action: "Оформити",
     cancel_action: "Скасувати",
     pay_called_try_close: "Оплата викликана, намагаюся закрити WebApp",
@@ -71,8 +71,8 @@ const I18N = {
     ad_removed: "The listing was removed",
     link_unavailable: "Link is unavailable",
     no_subscription_title: "No subscription",
-    no_subscription_msg:
-      "To access contacts, please subscribe to Domio",
+    no_subscription_msg: "To access contacts, please subscribe to Domio",
+    no_full_sub_msg: "This feature is available only with full access!",
     pay_action: "Subscribe",
     cancel_action: "Cancel",
     pay_called_try_close: "Payment triggered, trying to close WebApp",
@@ -106,8 +106,8 @@ const I18N = {
     ad_removed: "Ogłoszenie zostało usunięte",
     link_unavailable: "Link niedostępny",
     no_subscription_title: "Brak subskrypcji",
-    no_subscription_msg:
-      "Aby uzyskać dostęp do kontaktów, wykup subskrypcję Domio",
+    no_subscription_msg: "Aby uzyskać dostęp do kontaktów, wykup subskrypcję Domio",
+    no_full_sub_msg: "Ta funkcja jest dostępna tylko w ramach pełnego dostępu!",
     pay_action: "Wykup",
     cancel_action: "Anuluj",
     pay_called_try_close: "Płatność wywołana, próbuję zamknąć WebApp",
@@ -380,7 +380,7 @@ async function toggleSave(btn) {
     });
 
     if (response.status === 403) {
-      showPaymentPopup(id);
+      showPaymentPopup(id, true);
       return;
     }
 
@@ -409,11 +409,14 @@ async function toggleSave(btn) {
 }
 
 
-function showPaymentPopup(baseId) {
+function showPaymentPopup(baseId, is_full = false) {
   window.lastBaseIdForInvoice = baseId;
+  const message = is_full
+    ? t('no_full_sub_msg')      // если is_full === true
+    : t('no_subscription_msg'); // иначе
   tg.showPopup({
     title: t('no_subscription_title'),
-    message: t('no_subscription_msg'),
+    message: message,
     buttons: [
       { id: "pay", type: "default", text: t('pay_action') },
       { id: "cancel", type: "destructive", text: t('cancel_action') }

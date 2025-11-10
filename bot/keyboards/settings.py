@@ -33,10 +33,9 @@ def recurring_prompt_disable(user: User) -> InlineKeyboardMarkup:
             callback_data="recurring|off")
     )
 
-    if user.recurring_on:
-        builder.row(
-            InlineKeyboardButton(
-                text=btn(user.language_code, "back"),
-                callback_data="settings|settings")
-        )
+    builder.row(
+        InlineKeyboardButton(
+            text=btn(user.language_code, "back"),
+            callback_data="settings|settings")
+    )
     return builder.as_markup()

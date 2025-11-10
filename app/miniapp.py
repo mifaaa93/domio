@@ -64,6 +64,10 @@ async def toggle_save(data: JsonDict, session: Db, auth_user: Auth):
     )
     if not user:
         raise HTTPException(status_code=401, detail="Invalid user")
+    
+    if not user.is_full_sub_active:
+        # если подписка тестовая или подписки нету вообще
+        raise HTTPException(status_code=403, detail="Forbiden")
 
     adv = await get_listing_by_id(session, base_id)
     if not adv:

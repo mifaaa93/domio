@@ -724,7 +724,8 @@ async def add_sub_to_user(
         session: AsyncSession,
         user: User,
         days: int,
-        amount: float=None) -> None:
+        amount: float=None,
+        is_test: bool=False) -> None:
     """
     Продлевает подписку пользователя на `days` суток.
     Если подписки нет или она уже истекла — начинает отсчёт от текущего времени (UTC).
@@ -739,6 +740,7 @@ async def add_sub_to_user(
     base = user.subscription_until if (user.subscription_until and user.subscription_until > now) else now
     new_until = base + timedelta(days=days)
     user.subscription_until = new_until
+    user.is_full_sub = not is_test or user.is_full_sub
     
     if amount and user.referrer_id:
         # 

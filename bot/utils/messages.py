@@ -1,15 +1,17 @@
 from bot.utils.sender import send_or_edit_message, edit_btns
 from bot.utils.images import get_image
-from bot.texts import t
+from bot.texts import t, vid
 from bot.keyboards.lang import get_language_keyboard
 from bot.keyboards.menu import *
 from bot.keyboards.subs import *
+from bot.keyboards.other_kb import *
 from bot.keyboards.settings import *
 from aiogram.types import Message, CallbackQuery
 from aiogram import Bot
 from db.models import User, District, City, UserSearch
 from config import BOT_URL, SUPPORT_USERNAME, REVIEWS_URL
 from bot.utils.helpers import add_query_params
+
 
 async def send_language_prompt(target: Message | CallbackQuery, user: User, try_edit: bool=False) -> Message:
     lang = user.language_code
@@ -415,6 +417,24 @@ async def successful_subscription_channel(
         disable_web_page_preview=True
     )
 
+async def successful_confirm_earn_channel(
+        user: User=None,
+        bot: Bot=None,
+        payload: dict=None,
+        chat_id: int=None) -> Message:
+    '''
+    инфо в канал когда подписка активирована
+    '''
+    payload = payload or {}
+    amount = payload.get("amount", "---")
+    user_link = user.get_link if user else "----"
+    text = f"{user_link} запрошує вивід коштів за рефералів: <b>{amount} PLN</b>"
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        disable_web_page_preview=True
+    )
+
 
 async def new_user_channel(
         user: User=None,
@@ -439,14 +459,26 @@ async def settings_main(
         try_edit: bool=False) -> Message:
     '''
     сообщения настройки
+    так же показываем инфо по подписке
     '''
     lang = user.language_code
     key = "settings"
+    text = t(lang, key)
+    if user.subscribed:
+        if user.is_full_sub:
+            text = t(lang, "sub_settings_full").format(until=user.subscription_until_str)
+        else:
+            text = t(lang, "sub_settings").format(until=user.subscription_until_str)
+        if user.recurring_on:
+            text += "\n\n" + t(lang, "autocontinue_info").format(date=user.autocontinue_str)
+    else:
+        text = t(lang, "no_sub_settings")
+
     return await send_or_edit_message(
         target,
         key=key,
         lang=lang,
-        text=t(lang, key),
+        text=text,
         keyboard=get_settings_keyboard(user),
         try_edit=try_edit,
         photo=get_image(lang, key)
@@ -472,7 +504,7 @@ async def earn_with_domio(
         key=key,
         lang=lang,
         text=text,
-        keyboard=get_settings_keyboard(user),
+        keyboard=get_earn_with_domio_keyboard(user),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -513,4 +545,128 @@ async def reviews(
         text=t(lang, key).format(url=REVIEWS_URL),
         try_edit=try_edit,
         photo=get_image(lang, key)
+    )
+
+
+
+async def earn_instruction(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    инструкция по рефералке
+    '''
+    lang = user.language_code
+    key = "earn_instruction"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        keyboard=get_earn_instruction_keyboard(user),
+        photo=get_image(lang, key)
+    )
+
+
+async def ask_earn_payout(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    запрос на вывод баланса
+    '''
+    lang = user.language_code
+    key = "ask_earn_payout"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(current=user.referral_balance_current),
+        try_edit=try_edit,
+        keyboard=earn_confirm_payout(user),
+        photo=get_image(lang, key)
+    )
+
+
+async def payout_request_sended(
+        target: Message | CallbackQuery,
+        user: User,
+        amount: float,
+        try_edit: bool=False) -> Message:
+    '''
+    запрос на вывод баланса
+    '''
+    lang = user.language_code
+    key = "payout_request_sended"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(amount=amount),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def only_full_sub_message(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    отзывы
+    '''
+    lang = user.language_code
+    key = "only_full_sub"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def how_to_use(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    меню выбора инструкции
+    '''
+    lang = user.language_code
+    key = "how_to_use"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        keyboard=how_to_use_btns(user),
+        photo=get_image(lang, key)
+    )
+
+
+async def send_video_instruction(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        submenu: str=None) -> Message:
+    '''
+    сделать отправку видео по айди.
+    пока что только отправка текста
+    '''
+    lang = user.language_code
+    caption = t(lang, submenu)
+    video_id = vid(lang, submenu)
+
+    return await send_or_edit_message(
+        target,
+        key=submenu,
+        lang=lang,
+        text=caption,
+        try_edit=try_edit,
+        keyboard=back_to_how_to_use_btns(user),
+        photo=get_image(lang, submenu)
     )

@@ -69,6 +69,12 @@ async def listing_like_unlike(callback: CallbackQuery, session: AsyncSession, us
     _, submenu = callback.data.split("|", 1) # unlike|id like|id
 
     if submenu.startswith(("unlike", "like",)):
+        if not user.is_full_sub_active:
+            await callback.answer(
+                alert_t(user.language_code, "not_aval_in_test"),
+                show_alert=True
+            )
+            return
         what_task, base_id = submenu.split("|", 1)
         base_id = int(base_id)
         adv = await get_listing_by_id(session, base_id)

@@ -24,54 +24,54 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "pl": "🏠 Menu główne",
     },
     "search_type": {
-        "uk": "Обери тип пошуку",
-        "en": "Choose search type",
-        "pl": "Wybierz typ wyszukiwania",
+        "uk": "Обери <b>тип пошуку</b>",
+        "en": "Choose <b>search type</b>",
+        "pl": "Wybierz <b>typ wyszukiwania</b>",
     },
     "estate_type": {
-        "uk": "Обери тип нерухомості",
-        "en": "Choose property type",
-        "pl": "Wybierz typ nieruchomości",
+        "uk": "Обери <b>тип нерухомості</b>",
+        "en": "Choose <b>property type</b>",
+        "pl": "Wybierz <b>typ nieruchomości</b>",
     },
     "market_type": {
-        "uk": "Обери тип ринку",
-        "en": "Choose market type",
-        "pl": "Wybierz typ rynku",
+        "uk": "Обери <b>тип ринку</b>",
+        "en": "Choose <b>market type</b>",
+        "pl": "Wybierz <b>typ rynku</b>",
     },
     "select_city": {
-        "uk": "🌆 Оберіть місто",
-        "en": "🌆 Choose city",
-        "pl": "🌆 Wybierz miasto",
+        "uk": "🌆 Оберіть <b>місто</b>",
+        "en": "🌆 Choose <b>city</b>",
+        "pl": "🌆 Wybierz <b>miasto</b>",
     },
     "select_district": {
-        "uk": "📍 Відміть галочкою район і натисни «Далі»",
-        "en": "📍 Select districts and press «Next»",
-        "pl": "📍 Zaznacz dzielnice i naciśnij «Dalej»",
+        "uk": "📍 Відміть галочкою <b>район</b> і натисни <b>«Далі»</b>",
+        "en": "📍 Select <b>districts</b> and press <b>«Next»</b>",
+        "pl": "📍 Zaznacz <b>dzielnice</b> i naciśnij <b>«Dalej»</b>",
     },
     "area_from": {
-        "uk": "Від якої площі шукаєш?",
-        "en": "What minimum area are you looking for?",
-        "pl": "Od jakiego metrażu szukasz?"
+        "uk": "Від якої <b>площі</b> шукаєш?",
+        "en": "What minimum <b>area</b> are you looking for?",
+        "pl": "Od jakiego <b>metrażu</b> szukasz?"
     },
     "area_to": {
-        "uk": "До якої площі шукаєш?",
-        "en": "What maximum area are you looking for?",
-        "pl": "Do jakiego metrażu szukasz?"
+        "uk": "<b>До</b> якої <b>площі</b> шукаєш?",
+        "en": "<b>What</b> maximum <b>area</b> are you looking for?",
+        "pl": "<b>Do</b> jakiego <b>metrażu</b> szukasz?"
     },
     "rooms_count": {
-        "uk": "Зазнач к-сть кімнат",
-        "en": "Specify the number of rooms",
-        "pl": "Podaj liczbę pokoi"
+        "uk": "Зазнач <b>к-сть кімнат</b>",
+        "en": "Specify <b>the number of room</b>s",
+        "pl": "Podaj <b>liczbę pokoi</b>"
     },
     "price_from": {
-        "uk": "Обери ВІД якої вартості ти шукаєш нерухомість",
-        "en": "Choose the minimum price for the property you’re looking for",
-        "pl": "Wybierz minimalną cenę nieruchomości, której szukasz"
+        "uk": "Впиши <b>від якої</b> вартості шукаєш нерухомість",
+        "en": "Enter the <b>minimum</b> price of the property you're looking for",
+        "pl": "Wpisz <b>od jakiej</b> ceny szukasz nieruchomości"
     },
     "price_to": {
-        "uk": "Обери ДО якої вартості ти шукаєш нерухомість",
-        "en": "Choose the maximum price for the property you’re looking for",
-        "pl": "Wybierz maksymalną cenę nieruchomości, której szukasz"
+        "uk": "Впиши <b>до якої</b> вартості шукаєш нерухомість",
+        "en": "Enter the <b>maximum</b> price of the property you're looking for",
+        "pl": "Wpisz <b>do jakiej</b> ceny szukasz nieruchomości"
     },
     "child": {
         "uk": "Маєш дітей",
@@ -85,21 +85,21 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
     },
     "results": {
         "uk": (
-            "Результат пошуку\n"
-            "Domio підібрав для тебе {total} квартир, що відповідають твоєму запиту.\n\n"
-            "Твій запит:\n"
+            "<b>Результат пошуку</b>\n"
+            "Domio підібрав для тебе <b>{total} квартир</b>, що відповідають твоєму запиту.\n\n"
+            "<b>Твій запит:</b>\n"
             "{search}"
         ),
         "en": (
-            "Search results\n"
-            "Domio has found {total} apartments that match your request.\n\n"
-            "Your request:\n"
+            "<b>Search results</b>\n"
+            "Domio has found <b>{total} apartments</b> that match your request.\n\n"
+            "<b>Your request:</b>\n"
             "{search}"
         ),
         "pl": (
-            "Wynik wyszukiwania\n"
-            "Domio znalazło dla Ciebie {total} mieszkań pasujących do Twojego zapytania.\n\n"
-            "Twoje zapytanie:\n"
+            "<b>Wynik wyszukiwania</b>\n"
+            "Domio znalazło dla Ciebie <b>{total} mieszkań</b> pasujących do Twojego zapytania.\n\n"
+            "<b>Twoje zapytanie:</b>\n"
             "{search}"
         )
     },
@@ -109,34 +109,39 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "pl": "Zapisanych ogłoszeń: {total}",
     },
     "subscribe_main": {
-        "uk": f'''<i>💛 Що дає кожна підписка:</i>
-🔸 Пробна за {subscribe_prices["test"]["price"]} зл, щоб перевірити, як працює пошук квартир.
-🔸 Підписка на два тижні за {subscribe_prices["2week"]["price"]} зл — <b>повний доступ:</b>
-🔸 Місячна підписка за {subscribe_prices["month"]["price"]} зл — <b>повний доступ:</b>
+        "uk": f'''<b>💛 Що дає кожна підписка:</b>
+🔸 {subscribe_prices["test"]["price"]} зл/ 3 дні, щоб перевірити як працює пошук квартир.
+🔸 <b>{subscribe_prices["2week"]["price"]} зл/ 14 днів</b> — повний доступ,
+🔸 {subscribe_prices["month"]["price"]} зл/ місяць — повний доступ.
+
+<b>Повний доступ:</b>
 • сповіщення, коли з’являються нові квартири 🏠
 • можливість зберігати результати пошуку 📋
-• безкоштовні гайди з оренди 🧾
+• безкоштовний гайд з оренди 🧾
 
 <i>💬 Оплачуючи підписку та користуючись пошуком квартир, ти автоматично підтверджуєш, що ознайомився та погоджуєшся з регламентом і політикою приватності Domio</i>''',
-        "pl": f"""<i>💛 Co daje każdy abonament:</i>
-🔸 Okres próbny za {subscribe_prices["test"]["price"]} zł, aby sprawdzić, jak działa wyszukiwanie mieszkań.
-🔸 Abonament na dwa tygodnie za {subscribe_prices["2week"]["price"]} zł — <b>pełny dostęp:</b>
-🔸 Abonament miesięczny za {subscribe_prices["month"]["price"]} zł — <b>pełny dostęp:</b>
-• powiadomienia o nowych mieszkaniach 🏠
+        "en": f'''<b>💛 What each subscription gives:</b>
+🔸 {subscribe_prices["test"]["price"]} zł / 3 days — to try how the apartment search works.
+🔸 <b>{subscribe_prices["2week"]["price"]} zł / 14 days</b> — full access,
+🔸 {subscribe_prices["month"]["price"]} zł / month — full access.
+
+<b>Full access:</b>
+• notifications when new apartments appear 🏠
+• ability to save search results 📋
+• free rental guide 🧾
+
+<i>💬 By paying for a subscription and using the apartment search, you automatically confirm that you have read and agree to Domio’s Terms and Privacy Policy</i>''',
+        "pl": f'''<b>💛 Co daje każda subskrypcja:</b>
+🔸 {subscribe_prices["test"]["price"]} zł / 3 dni — aby sprawdzić, jak działa wyszukiwanie mieszkań.
+🔸 <b>{subscribe_prices["2week"]["price"]} zł / 14 dni</b> — pełny dostęp,
+🔸 {subscribe_prices["month"]["price"]} zł / miesiąc — pełny dostęp.
+
+<b>Pełny dostęp:</b>
+• powiadomienia, gdy pojawiają się nowe mieszkania 🏠
 • możliwość zapisywania wyników wyszukiwania 📋
-• bezpłatne poradniki dotyczące najmu 🧾
+• darmowy poradnik o wynajmie 🧾
 
-<i>💬 Opłacając abonament i korzystając z wyszukiwarki mieszkań, automatycznie potwierdzasz, że zapoznałeś(-aś) się z regulaminem i polityką prywatności Domio.</i>""",
-        "en": f"""<i>💛 What each subscription gives you:</i>
-🔸 Trial for {subscribe_prices["test"]["price"]} PLN to test how the apartment search works.
-🔸 Two-week subscription for {subscribe_prices["2week"]["price"]} PLN — <b>full access:</b>
-🔸 Monthly subscription for {subscribe_prices["month"]["price"]} PLN — <b>full access:</b>
-• alerts when new apartments appear 🏠
-• ability to save your search results 📋
-• free renting guides 🧾
-
-<i>💬 By paying for a subscription and using the apartment search, you automatically confirm that you have read and agree to Domio’s Terms and Privacy Policy.</i>"""
-
+<i>💬 Opłacając subskrypcję i korzystając z wyszukiwania mieszkań, automatycznie potwierdzasz, że zapoznałeś się i zgadzasz się z regulaminem i polityką prywatności Domio</i>''',
     },
     "successful_subscription": {
         "uk": "✅ У тебе активована підписка на {days} дні(-ів) до {valid_to}",
@@ -148,10 +153,31 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "en": "⚙️ Settings",
         "pl": "⚙️ Ustawienia",
     },
+    "sub_settings_full": {
+        "uk": '''Твоя підписка активна до: <b>{until}</b>\nПовний доступ: ✅''',
+        "en": '''Your subscription is active until: <b>{until}</b>\nFull access: ✅''',
+        "pl": '''Twoja subskrypcja jest aktywna do: <b>{until}</b>\nPełny dostęp: ✅''',
+    },
+    "sub_settings": {
+        "uk": '''Твоя підписка активна до: <b>{until}</b>\nПовний доступ: ❌''',
+        "en": '''Your subscription is active until: <b>{until}</b>\nFull access: ❌''',
+        "pl": '''Twoja subskrypcja jest aktywna do: <b>{until}</b>\nPełny dostęp: ❌''',
+    },
+    "no_sub_settings": {
+        "uk": '''Твоя підписка не активна''',
+        "en": '''Your subscription is not active''',
+        "pl": '''Twoja subskrypcja nie jest aktywna''',
+    },
+    "autocontinue_info": {
+        "uk": '''Підписка буде автоматично продовжена <b>{date}.</b>''',
+        "en": '''The subscription will be automatically renewed on <b>{date}.</b>''',
+        "pl": '''Subskrypcja zostanie automatycznie odnowiona <b>{date}.</b>''',
+    },
+
     "earn_with_domio": {
-        "uk": "Твоє реферальне посилання:\n{url}\n\nПоточний баланс: {current} PLN\nНараховано за весь час: {total} PLN",
-        "en": "Your referral link:\n{url}\n\nYour current balance: {current} PLN\nTotal earned from referrals: {total} PLN",
-        "pl": "Twój link polecający:\n{url}\n\nAktualny stan konta: {current} PLN\nŁącznie zarobiono z poleceń: {total} PLN",
+        "uk": "<b>Твоє реферальне посилання:</b>\n{url}\n\nПоточний баланс: {current} PLN\nНараховано за весь час: {total} PLN",
+        "en": "<b>Your referral link:</b>\n{url}\n\nYour current balance: {current} PLN\nTotal earned from referrals: {total} PLN",
+        "pl": "<b>Twój link polecający:</b>\n{url}\n\nAktualny stan konta: {current} PLN\nŁącznie zarobiono z poleceń: {total} PLN",
     },
     "recurring_prompt_disable": {
         "uk": "Ти бажаєш вимкнути автопродовження підписки?",
@@ -168,6 +194,106 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "en": "🗣 <b>Reviews about Domio</b>\nWant to see what our users say?\nCheck real reviews at the link below 👇\n👉 <a href=\"{url}\">Reviews about Domio</a>.",
         "pl": "🗣 <b>Opinie o Domio</b>\nChcesz zobaczyć, co mówią nasi użytkownicy?\nZobacz prawdziwe opinie pod linkiem poniżej 👇\n👉 <a href=\"{url}\">Opinie o Domio</a>."
     },
+    "earn_instruction": {
+        "uk": "Інструкція: ",
+        "en": "Інструкція: ",
+        "pl": "Інструкція: ",
+    },
+    "ask_earn_payout": {
+        "uk": "У тебе на балансі: <b>{current} PLN</b>\n\nТи бажаешь вивести гроші за рефералів?",
+        "en": "You have <b>{current} PLN</b> on your balance.\n\nWould you like to withdraw referral earnings?",
+        "pl": "Na Twoim koncie: <b>{current} PLN</b>\n\nCzy chcesz wypłacić środki z poleceń?",
+    },
+    "payout_request_sended": {
+        "uk": "Твій запит на вивід коштів за рефералів відправлений.\n<b>Сумма: {amount} PLN</b>\n\nНаш менеджер зв'яжеться з тобою найближчим часом!",
+        "en": "Your withdrawal request for referral earnings has been sent.\n<b>Amount: {amount} PLN</b>\n\nOur manager will contact you shortly!",
+        "pl": "Twoje zlecenie wypłaty środków z poleceń zostało wysłane.\n<b>Kwota: {amount} PLN</b>\n\nNasz menedżer skontaktuje się z Tobą wkrótce!",
+    },
+    "only_full_sub": {
+        "uk": "Ця функція доступна лише в повному доступі!",
+        "en": "This feature is available only with full access!",
+        "pl": "Ta funkcja jest dostępna tylko w ramach pełnego dostępu!",
+    },
+    "how_to_use": {
+        "uk": "Обери інструкцію 👇",
+        "en": "Choose an instruction 👇",
+        "pl": "Wybierz instrukcję 👇",
+    },
+    "instruction_rent": {
+        "uk": "Тримай покрокову інструкцію з пошуку оренди без комісії в Domio.",
+        "en": "Here’s a step-by-step guide to finding rentals without commission on Domio.",
+        "pl": "Oto instrukcja krok po kroku, jak znaleźć wynajem bez prowizji w Domio."
+    },
+    "instruction_mortgage": {
+        "uk": "Тримай покрокову інструкцію як перевірити свою кредитоспроможність.",
+        "en": "Here’s a step-by-step guide on how to check your creditworthiness.",
+        "pl": "Oto instrukcja krok po kroku, jak sprawdzić swoją zdolność kredytową."
+    },
+    "instruction_access": {
+        "uk": "Тримай покрокову інструкцію, як оформити доступ у Domio.",
+        "en": "Here’s a step-by-step guide on how to get access in Domio.",
+        "pl": "Oto instrukcja krok po kroku, jak uzyskać dostęp w Domio."
+    },
+    "instruction_services": {
+        "uk": "Тримай покрокову інструкцію, як працюють Додаткові послуги в Domio.",
+        "en": "Here’s a step-by-step guide on how the Additional Services in Domio work.",
+        "pl": "Oto instrukcja krok po kroku, jak działają Usługi Dodatkowe w Domio."
+    },
+    "instruction_earn": {
+        "uk": "Тримай покрокову інструкцію, як можна заробляти разом з Domio.",
+        "en": "Here’s a step-by-step guide on how you can earn with Domio.",
+        "pl": "Oto instrukcja krok po kroku, jak możesz zarabiać z Domio."
+    },
+    "instruction_primary": {
+        "uk": "Тримай покрокову інструкцію з пошуку купівлі нерухомості без комісії в Domio.",
+        "en": "Here’s a step-by-step guide to finding property purchases without commission on Domio.",
+        "pl": "Oto instrukcja krok po kroku, jak znaleźć nieruchomość na sprzedaż bez prowizji w Domio."
+    },
+    "instruction_secondary": {
+        "uk": "Тримай покрокову інструкцію з пошуку купівлі нерухомості без комісії в Domio.",
+        "en": "Here’s a step-by-step guide to buying property without commission on Domio.",
+        "pl": "Oto instrukcja krok po kroku, jak kupić nieruchomość bez prowizji w Domio."
+    },
+
+}
+
+VIDEO_IDS = {
+    "instruction_rent": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_mortgage": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_access": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_services": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_earn": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_primary": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    },
+    "instruction_secondary": {
+        "uk": "",
+        "en": "",
+        "pl": ""
+    }
+
 }
 
 BUTTONS: Dict[str, Dict[Lang, str]] = {
@@ -188,9 +314,9 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "pl": "⭐ Uzyskaj dostęp",
     },
     "how_to_use": {
-        "uk": "📘 Як користуватися",
-        "en": "📘 How to use",
-        "pl": "📘 Jak korzystać",
+        "uk": "🪄 Як користуватися",
+        "en": "🪄 How to use",
+        "pl": "🪄 Jak korzystać",
     },
     "favorites": {
         "uk": "💾 Збережені",
@@ -213,9 +339,9 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "pl": "🏦 Kredyt hipoteczny",
     },
     "builders_services": {
-        "uk": "🛠 Будівельні послуги",
-        "en": "🛠 Construction services",
-        "pl": "🛠 Usługi budowlane",
+        "uk": "🛠 Інші послуги",
+        "en": "🛠 Other services",
+        "pl": "🛠 Inne usługi",
     },
     "earn_with_domio": {
         "uk": "💰 Заробіток з Domio",
@@ -233,14 +359,14 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
         "pl": "🛟 Pomoc",
     },
     "language": {
-        "uk": "🌐 Мова",
-        "en": "🌐 Language",
-        "pl": "🌐 Język",
+        "uk": "🌐 Змінити мову",
+        "en": "🌐 Change language",
+        "pl": "🌐 Zmień język",
     },
     "recurring": {
-        "uk": "Вимкнути автопродовження",
-        "en": "Turn off auto-renewal",
-        "pl": "Wyłącz automatyczne odnawianie",
+        "uk": "❌ Вимкнути автопродовження",
+        "en": "❌ Turn off auto-renewal",
+        "pl": "❌ Wyłącz automatyczne odnawianie",
     },
     "back": {
         "uk": "⬅️ Назад",
@@ -425,8 +551,59 @@ BUTTONS: Dict[str, Dict[Lang, str]] = {
     "map_btn": {
         "uk": "🗺 Карта",
         "en": "🗺 Map",
-        "pl": "🗺 Mapa"
+        "pl": "🗺 Mapa",
     },
+    "instruction_btn": {
+        "uk": "Інструкція",
+        "en": "Instruction",
+        "pl": "Instrukcja"
+    },
+    "pay_out_btn": {
+        "uk": "Вивести гроші",
+        "en": "Withdraw money",
+        "pl": "Wypłać pieniądze"
+    },
+    "instruction_rent_btn": {
+        "uk": "Для оренди квартири",
+        "en": "For renting an apartment",
+        "pl": "Dla wynajmu mieszkania"
+    },
+    "instruction_buy_btn": {
+        "uk": "Для купівлі квартири",
+        "en": "For buying an apartment",
+        "pl": "Dla zakupu mieszkania"
+    },
+    "instruction_mortgage_btn": {
+        "uk": "Для Іпотеки",
+        "en": "For mortgage",
+        "pl": "Dla kredytu hipotecznego"
+    },
+    "instruction_access_btn": {
+        "uk": "Як оформити доступ",
+        "en": "How to get access",
+        "pl": "Jak uzyskać dostęp"
+    },
+    "instruction_services_btn": {
+        "uk": "Як працюють Додаткові послуги",
+        "en": "How additional services work",
+        "pl": "Jak działają usługi dodatkowe"
+    },
+    "instruction_earn_btn": {
+        "uk": "Як можна заробляти з Domio",
+        "en": "How to earn with Domio",
+        "pl": "Jak zarabiać z Domio"
+    },
+    "instruction_primary_btn": {
+        "uk": "Первинний ринок",
+        "en": "Primary market",
+        "pl": "Rynek pierwotny"
+    },
+    "instruction_secondary_btn": {
+        "uk": "Вторинний ринок",
+        "en": "Secondary market",
+        "pl": "Rynek wtórny"
+    }
+
 }
 
 LISTINGS = {
@@ -484,7 +661,17 @@ ALERTS: Dict[str, Dict[Lang, str]] = {
         "uk": "Автопродовження вимкнуто",
         "en": "Auto-renewal disabled",
         "pl": "Automatyczne odnawianie wyłączone",
-        },
+    },
+    "no_ref_balance": {
+        "uk": "Порожній баланс",
+        "en": "Empty balance",
+        "pl": "Brak środków",
+    },
+    "not_aval_in_test": {
+        "uk": "Ця функція доступна лише в повному доступі!",
+        "en": "This feature is available only with full access!",
+        "pl": "Ta funkcja jest dostępna tylko w ramach pełnego dostępu!",
+    },
 }
 
 def t(lang: Lang | None, key: str) -> str:
@@ -506,3 +693,7 @@ def alert_t(lang: Lang | None, key: str) -> str:
 def btn_tuple(key: str) -> str:
     """Возвращает текст кнопки по ключу и языку с fallback на uk."""
     return tuple(BUTTONS.get(key, {}).values())
+
+def vid(lang: Lang | None, key: str) -> str:
+    """Возвращает айди видео по ключу и языку с fallback на uk."""
+    return VIDEO_IDS.get(key, {}).get(lang or "uk", VIDEO_IDS.get(key, {}).get("uk"))

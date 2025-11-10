@@ -175,7 +175,7 @@ async def _process_payu_event(
                     if user:
                         if inv.invoice_type == InvoiceType.SUBSCRIPTION:
                             # добавляем подписку юзеру
-                            await add_sub_to_user(session, user, inv.days, inv.amount)
+                            await add_sub_to_user(session, user, inv.days, inv.amount, inv.is_test)
                             await schedule_message(
                                 session,
                                 MessageType.INVOICE,

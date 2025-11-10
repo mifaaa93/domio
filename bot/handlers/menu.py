@@ -18,7 +18,7 @@ async def not_choosen_language_btn(msg: Message, session: AsyncSession, user: Us
     """
     нажата кнопка поиск квартир
     """
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    # выбор языка
     await send_language_prompt(msg, user)
 
 
@@ -38,7 +38,7 @@ async def subscribe_btn_press(msg: Message, session: AsyncSession, user: User, s
     """
     нажата кнопка подписка
     """
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    # сообщение с выбором подписки
     await trigger_invoice(msg, user)
 
 
@@ -48,9 +48,11 @@ async def favorites_btn_press(msg: Message, session: AsyncSession, user: User, s
     """
     нажата кнопка 💾 Збережені
     """
+    if not user.is_full_sub_active:
+        await only_full_sub_message(msg, user)
+        return
     saved_ids = await get_saved_listing_ids(session, user)
     total = len(saved_ids)
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
     await favorites(msg, user, total=total)
 
 @router.message(
@@ -69,7 +71,7 @@ async def earn_with_domio_btn_press(msg: Message, session: AsyncSession, user: U
     """
     нажата кнопка 💰 Заробіток з Domio
     """
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    # рефералка
     await earn_with_domio(msg, user)
 
 @router.message(
@@ -78,7 +80,7 @@ async def help_btn_press(msg: Message, session: AsyncSession, user: User, state:
     """
     нажата кнопка 🛟 Допомога
     """
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    # помощь
     await help_message(msg, user)
 
 @router.message(
@@ -87,5 +89,15 @@ async def reviews_btn_press(msg: Message, session: AsyncSession, user: User, sta
     """
     нажата кнопка 🗣 Відгуки
     """
-    # передаем в search-цепочку (первая стадия выбора типа пошуку)
+    # отзывы
     await reviews(msg, user)
+
+
+@router.message(
+        F.text.in_(btn_tuple("how_to_use")))
+async def how_to_use_btn_press(msg: Message, session: AsyncSession, user: User, state: FSMContext):
+    """
+    нажата кнопка 🪄 Як користуватися
+    """
+    # меню выбора инструкций
+    await how_to_use(msg, user)
