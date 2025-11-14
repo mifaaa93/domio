@@ -11,7 +11,7 @@ from bot.texts import alert_t
 from bot.utils.messages import *
 from bot.utils.helpers import parse_price
 from bot.states import PriceStates
-from config import CITIES_STR
+from config import CITIES_STR, ADMIN_IDS
 
 router = Router()
 
@@ -41,6 +41,29 @@ async def estate_type_select(callback: CallbackQuery, session: AsyncSession, use
     # --- получить или создать фильтр для пользователя ---
     search = await get_user_search(session, user)
     search.property_type = estate_type_val
+    await session.commit()
+    if user.id in ADMIN_IDS:
+        # если админ то даем выбрать без комиссии или с комиссией
+        await comissiom_type(callback, user)
+    else:
+        # иначе переходим к выбору города
+        cities = await get_cities(session, CITIES_STR)
+        await select_city(callback, user, try_edit=True, cities=cities)
+
+@router.callback_query(F.data.startswith("comissiom_type|"))
+async def comissiom_type_select(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
+    """
+    Сохраняем тип комиссии (apartment, house, room) и переходим к выбору типа города.
+    """
+    _, comissiom_type_raw = callback.data.split("|", 1)  # owner, rieltor, all
+    # --- получить или создать фильтр для пользователя ---
+    value = None
+    if comissiom_type_raw == "owner":
+        value = True
+    elif comissiom_type_raw == "rieltor":
+        value = False
+    search = await get_user_search(session, user)
+    search.no_comission = value
     await session.commit()
     cities = await get_cities(session, CITIES_STR)
     await select_city(callback, user, try_edit=True, cities=cities)
@@ -161,7 +184,7 @@ async def area_from_call(callback: CallbackQuery, session: AsyncSession, user: U
         callback,
         user,
         try_edit=True,
-        min_area=area_value or 0)
+        min_area=area_value)
 
 
 @router.callback_query(F.data.startswith("area_to|"))
@@ -415,13 +438,18 @@ async def back_search_callback(callback: CallbackQuery, session: AsyncSession, u
         # назад из меню выбора типа рынка
         await start_search(callback, user, try_edit=True)
     
+    elif back_from == "comissiom_type":
+        # назад из меню выбора типа рынка
+        await estate_type(callback, user, try_edit=True)
+    
     elif back_from == "select_city":
         # назад из меню выбора города
-        if search.deal_type == "rent":
-            await estate_type(callback, user, deal_type=search.deal_type)
+        if user.id in ADMIN_IDS:
+        # если админ то даем выбрать без комиссии или с комиссией
+            await comissiom_type(callback, user)
         else:
-            await market_type(callback, user, try_edit=True)
-    
+            await estate_type(callback, user, deal_type=search.deal_type)
+
     elif back_from == "select_district":
         # назад из меню выбора района
         cities = await get_cities(session, CITIES_STR)

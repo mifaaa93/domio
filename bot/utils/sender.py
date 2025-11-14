@@ -24,42 +24,57 @@ async def send_or_edit_message(
     keyboard: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardMarkup]] = None,
     bot: Optional[Bot] = None,
     try_edit: bool = False,
+    # пути (как раньше)
     photo: Optional[str] = None,
     video: Optional[str] = None,
     document: Optional[str] = None,
     animation: Optional[str] = None,
-    chat_id: int=None
+    # новые параметры: file_id для каждого типа
+    photo_file_id: Optional[str] = None,
+    video_file_id: Optional[str] = None,
+    document_file_id: Optional[str] = None,
+    animation_file_id: Optional[str] = None,
+    chat_id: int = None,
 ) -> Message:
     """
     Универсальная функция для отправки/редактирования сообщений Telegram.
-    ✅ принимает путь до файла (photo/video/document/animation)
-    ✅ использует кеш file_id (по ключу (lang, key, media_type))
-    ✅ поддерживает try_edit (edit_media/edit_text)
-    ✅ автоматически определяет тип клавиатуры (inline/reply)
+    Поддерживает передачу либо пути до файла, либо file_id (переменные *_file_id).
     """
 
     # --- контекст ---
     msg = target.message if isinstance(target, CallbackQuery) else target
     chat_id = msg.chat.id if msg else chat_id
-    bot = bot or msg.bot
+    bot = bot or (msg.bot if msg else None)
     caption = text or ""
 
-    # --- определяем тип медиа и путь ---
+    # --- определяем тип медиа, путь и file_id (приоритет — file_id) ---
     media_type = None
     media_path = None
-    if photo:
-        media_type, media_path = "photo", photo
-    elif video:
-        media_type, media_path = "video", video
-    elif document:
-        media_type, media_path = "document", document
-    elif animation:
-        media_type, media_path = "animation", animation
+    explicit_file_id: Optional[str] = None
+
+    if photo or photo_file_id:
+        media_type = "photo"
+        media_path = photo
+        explicit_file_id = photo_file_id
+    elif video or video_file_id:
+        media_type = "video"
+        media_path = video
+        explicit_file_id = video_file_id
+    elif document or document_file_id:
+        media_type = "document"
+        media_path = document
+        explicit_file_id = document_file_id
+    elif animation or animation_file_id:
+        media_type = "animation"
+        media_path = animation
+        explicit_file_id = animation_file_id
 
     cache_key = (lang, key, media_type or "text")
-    file_id = _media_cache.get(cache_key)
-    media_file = None if file_id else (FSInputFile(media_path) if media_path else None)
+    # сначала пробуем взять file_id из аргумента (explicit), затем из кеша
+    file_id = explicit_file_id or _media_cache.get(cache_key)
 
+    # если file_id нет — создаём FSInputFile из пути (если путь есть)
+    media_file = None if file_id else (FSInputFile(media_path) if media_path else None)
     # --- редактирование ---
     if try_edit:
         try:

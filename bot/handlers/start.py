@@ -3,6 +3,7 @@ from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import Message, CallbackQuery, ChatMemberUpdated
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
+from config import LANGUAGES
 
 from db.models import User
 from db.repo_async import get_user_by_token
@@ -34,13 +35,22 @@ async def start_cmd(msg: Message, command: CommandObject, session: AsyncSession,
     - если язык не выбран → показать выбор языка
     - иначе — приветствие
     """
-    if user.language_code is None:
+    raw = command.args
+    if raw and raw in LANGUAGES:
+        # если по ссылке с сайта
+        user.language_code = raw
+        await session.commit()
+        await send_main_menu(msg, user)
+        await trigger_invoice(msg, user)
+    elif user.language_code is None:
         await send_language_prompt(msg, user)
     else:
         await send_main_menu(msg, user)
+    await state.clear()
 
 
 @router.callback_query(F.data == "main_menu")
 async def goto_main_menu(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
     
     await send_main_menu(callback, user, try_edit=True)
+    await state.clear()

@@ -7,7 +7,7 @@ from config import REFFERAL_PERCENT
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_, and_, exists, update, text, asc, desc
-from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing
+from db.models import City, District, Listing, UserSearch, User, UserSearchDistrict, SavedListing, Statistic
 from db.models import ScheduledMessage, ScheduledStatus, MessageType, ChatType
 from db.models import (
     Invoice, InvoiceStatus, InvoiceType,
@@ -245,6 +245,8 @@ async def find_listings_by_search(
             conditions.append(Listing.child_allowed.is_not(False))  # True или NULL
     if search.no_comission:
         conditions.append(Listing.no_comission.is_(True))
+    elif search.no_comission is False:
+        conditions.append(Listing.no_comission.is_not(True))
     # Базовый SELECT
     if not order_by:
         order_by = [Listing.scraped_at.desc(), Listing.id.desc()]
@@ -974,3 +976,47 @@ async def set_completed(session: AsyncSession, invoice: Invoice) -> None:
     if ok and invoice.completed_at is None:
         invoice.completed_at = datetime.now(timezone.utc)
     await session.flush()
+
+
+async def add_statistic_data(
+    session: AsyncSession,
+    user: User | None,
+    menu_item: str,
+    menu_task: str,
+    payload: dict,
+) -> None:
+    """
+    Добавляем запись в таблицу statistics.
+    payload возможные ключи:
+      - key: str
+      - city_id: int
+      - chat_id: int
+      - message_id: int
+      - lang: str
+      - user_agent: str
+      - ... любые дополнительные поля (они будут в payload JSONB)
+    Функция делает session.add() + await session.flush() — не коммитит (commit контролирует вызывающий код).
+    """
+    key = payload.get("key")
+    city_id = payload.get("city_id")
+    chat_id = payload.get("chat_id")
+    message_id = payload.get("message_id")
+    lang = payload.get("lang") or (getattr(user, "language_code", None) if user else None)
+    user_agent = payload.get("user_agent")
+
+    stat = Statistic(
+        user_id=(user.id if user else None),
+        city_id=city_id,
+        menu_item=menu_item,
+        menu_task=menu_task,
+        key=key,
+        payload=payload or {},
+        chat_id=chat_id,
+        message_id=message_id,
+        lang=lang,
+        user_agent=user_agent,
+    )
+
+    session.add(stat)
+    # flush — чтобы получить id и убедиться, что запись создана в текущей транзакции
+    await session.commit()

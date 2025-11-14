@@ -1,10 +1,10 @@
 # db/models.py
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from sqlalchemy import (
     String, Integer, BigInteger, Numeric, Boolean, DateTime, Text, ForeignKey,
     Index, UniqueConstraint, CheckConstraint, Computed, text
 )
+from config import LANGUAGES
 from urllib.parse import quote_plus
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
@@ -410,6 +410,18 @@ class User(Base):
         name = " ".join(filter(None, [self.first_name, self.last_name])) or "User"
         return html.escape(name)
 
+    @property
+    def language(self) -> str:
+        '''
+        '''
+        if self.language_code == "uk":
+            return "Українська"
+        if self.language_code == "en":
+            return "Англійська"
+        if self.language_code == "pl":
+            return "Польська"
+        
+        return "----"
 
     @property
     def get_link(self) -> str:
@@ -536,7 +548,7 @@ class UserSearch(Base):
         - наличие животных и детей (только для rent, если указано)
         """
         L = lang
-        if L not in ("uk", "pl", "en"):
+        if L not in LANGUAGES:
             L = "uk"
 
         # ---- словари локализации ----
@@ -568,6 +580,11 @@ class UserSearch(Base):
             "to":     {"uk": "до",         "pl": "do",         "en": "to"},
             "allowed":    {"uk": "дозволені",   "pl": "dozwolone",  "en": "allowed"},
             "not_allowed":{"uk": "заборонені",  "pl": "niedozwolone","en": "not allowed"},
+            "comission": { "uk": "Коміссія", "pl": "Prowizja", "en": "Commission" },
+            "yes": {"uk": "З комісією",  "en": "With commission",  "pl": "Z prowizją"},
+            "no": {"uk": "Без комісії",  "en": "No commission",  "pl": "Bez prowizji"},
+            "all": {"uk": "Всі оголошення",  "en": "All listings",  "pl": "Wszystkie ogłoszenia"},
+            
         }
 
         def loc(d: dict, key: str) -> str:
@@ -625,12 +642,14 @@ class UserSearch(Base):
             try:
                 rooms_list = sorted(set(int(r) for r in self.rooms))
                 rooms_txt = ", ".join(str(r) for r in rooms_list)
+                if rooms_txt.endswith("5"):
+                    rooms_txt += "+"
                 parts.append(f"{LABEL['rooms'][L]}: {rooms_txt}")
             except Exception:
                 pass
 
         # --- 4) Стоимость ---
-        price_txt = fmt_range(self.price_min, self.price_max)  # без валюты, т.к. не хранится
+        price_txt = fmt_range(self.price_min, self.price_max, "PLN")  # без валюты, т.к. не хранится
         if price_txt:
             parts.append(f"{LABEL['price'][L]}: {price_txt}")
 
@@ -640,6 +659,14 @@ class UserSearch(Base):
                 parts.append(f"{LABEL['pets'][L]}: {LABEL['allowed'][L]}")
             if self.child_allowed is True:
                 parts.append(f"{LABEL['child'][L]}: {LABEL['allowed'][L]}")
+        
+        if not self.no_comission:
+            if self.no_comission is None:
+                parts.append(f"{LABEL['comission'][L]}: {LABEL['all'][L]}")
+            else:
+                parts.append(f"{LABEL['comission'][L]}: {LABEL['yes'][L]}")
+        else:
+            parts.append(f"{LABEL['comission'][L]}: {LABEL['no'][L]}")
         # Финальный многострочный текст
         return "\n".join(parts) if parts else ""
 
@@ -855,4 +882,51 @@ class Invoice(Base):
         # Отдельные unique уже заданы в колонках.
         Index("ix_invoices_user_status", "user_id", "status"),
         Index("ix_invoices_created_at", "created_at"),
+    )
+
+
+class Statistic(Base):
+    __tablename__ = "statistics"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+
+    # связи (nullable, чтобы можно было логировать анонимные события)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    user: Mapped["User | None"] = relationship("User", lazy="joined")
+
+    city_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    city: Mapped["City | None"] = relationship("City", lazy="joined")
+
+    # основные поля
+    menu_item: Mapped[str] = mapped_column(String(64), nullable=False)   # e.g. "services" | "agent"
+    menu_task: Mapped[str] = mapped_column(String(64), nullable=False)   # e.g. "click" | "send"
+    key: Mapped[str | None] = mapped_column(String(128), nullable=True)   # детализация/ключ действия
+
+    # доп. контекст
+    payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True, server_default=text("'{}'::jsonb"))
+    chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lang: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+
+    __table_args__ = (
+        Index("ix_statistics_menu_item_task", "menu_item", "menu_task"),
+        Index("ix_statistics_key", "key"),
+        Index("ix_statistics_user_created", "user_id", "created_at"),
+        Index("ix_statistics_city_created", "city_id", "created_at"),
     )

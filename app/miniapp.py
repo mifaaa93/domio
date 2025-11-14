@@ -153,8 +153,8 @@ async def create_invoice_api(
         raise HTTPException(status_code=401, detail="Invalid user")
 
     # нормализуем вход
-    subscribe_type = data.get("subscribe_type")
-    invoice_type_s = data.get("invoice_type")
+    subscribe_type = data.get("subscribe_type") # SUBSCRIPTION | ONE_TIME
+    invoice_type_s = data.get("invoice_type") # test 2week month | guides
     try:
         invoice_type = InvoiceType(invoice_type_s)
     except Exception:
@@ -167,8 +167,8 @@ async def create_invoice_api(
     client_ip = _detect_ip(request)  # IP берём на бэке
 
     # 1) Создаём запись инвойса в БД (status=CREATED)
-    amount = float(invice_data["price"])
-    days = int(invice_data["days"])
+    amount = invice_data["price"]
+    days = invice_data.get("days") 
     description = invice_data.get("description") or f"Domio {subscribe_type}"
     currency = invice_data.get("currency")
     is_test = invice_data.get("is_test", True)

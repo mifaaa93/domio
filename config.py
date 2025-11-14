@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+LANGUAGES = ("uk", "en", "pl",)
 
 LOG_DIR = "logs"
 SYNC_URL = os.getenv("DATABASE_URL")
@@ -39,17 +40,81 @@ CREATE_INVOICE_URL = f"{DOMAIN}/miniapp/create_invoice/"
 BOT_URL = os.getenv("BOT_URL")
 SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME")
 REVIEWS_URL = os.getenv("REVIEWS_URL")
+DOMIO_INSTAGRAM = os.getenv("DOMIO_INSTAGRAM")
+
+
+SERVICES_CHANNELS = {
+    "Warszawa": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "warszawa_notary_contact", # Нотаріус
+        "sworn_translator": "warsaw_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Kraków": {
+        "repair_turnkey": -1003296401138, # 🏠 Ремонт “під ключ”
+        "plumber": -1003463612796, # 🚰 Сантехнік / гідравлік
+        "custom_furniture": -1002919629303, # Майстер меблів на замовлення
+        "electrician": -1003358470672, # Електрик
+        "small_repairs": -1003475531771, # Дрібний ремонт
+        "notary": "krakow_notary_contact", # Нотаріус
+        "sworn_translator": "krakow_sworn_translator_contact", # Присяжний перекладач
+        "moving_transport": -1003336596169, # Транспорт при переїзді
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Łódź": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "lodz_notary_contact", # Нотаріус
+        "sworn_translator": "lodz_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Wrocław": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "wroclaw_notary_contact", # Нотаріус
+        "sworn_translator": "wroclaw_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Poznań": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "poznan_notary_contact", # Нотаріус
+        "sworn_translator": "poznan_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Gdańsk": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "gdansk_notary_contact", # Нотаріус
+        "sworn_translator": "gdansk_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Szczecin": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "szczecin_notary_contact", # Нотаріус
+        "sworn_translator": "szczecin_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+    "Katowice": {
+        "moving_transport": -100, # Транспорт при переїзді
+        "notary": "katowice_notary_contact", # Нотаріус
+        "sworn_translator": "katowice_sworn_translator_contact", # Присяжний перекладач
+        "technical_acceptance": "technical_acceptance_contact", # Технічний прийом квартири
+    },
+}
+
 REFFERAL_PERCENT = 0.3 # сколько получают реффералы
 
 
 # словарь где хранятся цены подписок
 TARIFFS_DICT = {
     "SUBSCRIPTION": {
-        "test":  {'price': 4.99,  'days': 3,  'is_test': True,  'next_sub': "2week", "currency": "PLN"},
-        "2week": {'price': 19.99, 'days': 14, 'is_test': False, 'next_sub': "2week", "currency": "PLN"},
-        "month": {'price': 34.99, 'days': 30, 'is_test': False, 'next_sub': "month", "currency": "PLN"},
+        "test":  {'price': 4.99,  'days': 3,  'is_test': True,  'next_sub': "2week", "currency": "PLN", "description": "Domio service subscription for 3 days."},
+        "2week": {'price': 19.99, 'days': 14, 'is_test': False, 'next_sub': "2week", "currency": "PLN", "description": "Domio service subscription for 14 days."},
+        "month": {'price': 34.99, 'days': 30, 'is_test': False, 'next_sub': "month", "currency": "PLN", "description": "Domio service subscription for 1 month."},
+    },
+    "ONE_TIME": {
+        "guides": {'price': 99.0, "currency": "PLN", "description": "Domio guide on buying property in Poland."}
     }
+
 }
+
 
 REGLAMENT_URLS = {
     "pl": "https://domioestate.pl/regulamin-uslugi/",

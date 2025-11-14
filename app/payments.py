@@ -191,6 +191,30 @@ async def _process_payu_event(
                                 user_id=user.id,
                                 chat_id=SUBSCRIBES_CHANNEL
                                 )
+                        if inv.invoice_type == InvoiceType.ONE_TIME:
+                            # юзер приобрел что-то другое (не подписка)
+                            if inv.subscribe_type == "guides":
+                                # оплата гайда
+                                user.is_paid = True
+                                # добавить запланированные сообщения
+                                await schedule_message(
+                                    session,
+                                    MessageType.INVOICE,
+                                    chat_type=ChatType.PRIVATE,
+                                    payload={"from": "upay", "sub_type": "guides"},
+                                    user_id=user.id
+                                    )
+                                await schedule_message(
+                                    session,
+                                    MessageType.INVOICE,
+                                    chat_type=ChatType.CHANNEL,
+                                    payload={"from": "upay", "sub_type": "guides"},
+                                    user_id=user.id,
+                                    chat_id=SUBSCRIBES_CHANNEL
+                                    )
+
+
+
                 except Exception:
                     log.exception("Failed to add sub for user orderId=%s", order_id)
             await session.commit()

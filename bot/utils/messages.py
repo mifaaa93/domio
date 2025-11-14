@@ -1,6 +1,6 @@
 from bot.utils.sender import send_or_edit_message, edit_btns
 from bot.utils.images import get_image
-from bot.texts import t, vid
+from bot.texts import t, vid, guid, contact_key
 from bot.keyboards.lang import get_language_keyboard
 from bot.keyboards.menu import *
 from bot.keyboards.subs import *
@@ -79,6 +79,22 @@ async def start_search(target: Message | CallbackQuery, user: User, try_edit: bo
         lang=lang,
         text=t(lang, key),
         keyboard=get_search_type_keyboard(lang),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+async def comissiom_type(target: Message | CallbackQuery, user: User, try_edit: bool=True) -> Message:
+    """
+    Обери тип ринку
+    """
+    lang = user.language_code
+    key = "comissiom_type"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_comissiom_type_keyboard(lang),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -196,7 +212,7 @@ async def area_to(
         key=key,
         lang=lang,
         text=t(lang, key),
-        keyboard=get_area_to_keyboard(lang, min_area),
+        keyboard=get_area_to_keyboard(lang, min_area or 0),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -417,6 +433,22 @@ async def successful_subscription_channel(
         disable_web_page_preview=True
     )
 
+async def successful_guides_channel(
+        user: User=None,
+        bot: Bot=None,
+        payload: dict=None,
+        chat_id: int=None) -> Message:
+    '''
+    инфо в канал когда подписка активирована
+    '''
+    user_link = user.get_link if user else "----"
+    text = f"{user_link} придбав Гайд з купівлі нерухомості "
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        disable_web_page_preview=True
+    )
+
 async def successful_confirm_earn_channel(
         user: User=None,
         bot: Bot=None,
@@ -435,6 +467,21 @@ async def successful_confirm_earn_channel(
         disable_web_page_preview=True
     )
 
+
+async def successful_confirm_service_channel(
+        user: User=None,
+        bot: Bot=None,
+        payload: dict=None,
+        chat_id: int=None) -> Message:
+    '''
+    инфо в канал когда подписка активирована
+    '''
+    text = payload.get("text", str(payload))
+    return await bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        disable_web_page_preview=True
+    )
 
 async def new_user_channel(
         user: User=None,
@@ -668,5 +715,279 @@ async def send_video_instruction(
         text=caption,
         try_edit=try_edit,
         keyboard=back_to_how_to_use_btns(user),
-        photo=get_image(lang, submenu)
+        video_file_id=video_id
+    )
+
+
+async def guides(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    меню гайдов
+    '''
+    lang = user.language_code
+    key = "guides"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        keyboard=guides_btns(user),
+        photo=get_image(lang, key)
+    )
+
+async def guides_rent(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False) -> Message:
+    '''
+    файл гайдов по аренде
+    '''
+    lang = user.language_code
+    key = "guides_rent"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        keyboard=guides_rent_btns(user),
+        photo=get_image(lang, key)
+    )
+
+async def guides_sale(
+        target: Message | CallbackQuery=None,
+        user: User=None,
+        try_edit: bool=False,
+        bot: Bot=None) -> Message:
+    '''
+    файл гайдов по покупке
+    '''
+    lang = user.language_code
+    key = "guides_sale"
+    toc_link = guid(lang, key)
+    return await send_or_edit_message(
+        target,
+        bot=bot,
+        chat_id=user.id,
+        key=key,
+        lang=lang,
+        text=t(lang, key).format(toc_link=toc_link),
+        try_edit=try_edit,
+        keyboard=guides_sale_btns(user),
+        photo=get_image(lang, key)
+    )
+
+async def contact_agent(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        cities: list=[City]
+        ) -> Message:
+    '''
+    выбор города для риелтора
+    '''
+    lang = user.language_code
+    key = "select_city_agent"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_select_city_keyboard(lang, cities, key, False),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+async def builders_services(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        cities: list=[City]
+        ) -> Message:
+    '''
+    выбор города для других услуг
+    '''
+    lang = user.language_code
+    key = "select_city_builders"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_select_city_keyboard(lang, cities, "other|city", False),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+
+async def builders_type(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    выбор города для других услуг
+    '''
+    lang = user.language_code
+    key = "builders_type"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_builders_type_keyboard(user, city_id),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+async def service_not_availabel(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    выбор города для других услуг
+    '''
+    lang = user.language_code
+    key = "service_not_availabel"
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=back_to_services_keyboard(user, city_id),
+        try_edit=try_edit,
+        photo=get_image(lang, key)
+    )
+
+async def send_contact_for_service(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        key: str,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=contact_key(lang, key),
+        keyboard=back_to_services_keyboard(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+async def moving_transport_first(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        key: str,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=back_to_services_or_continu_keyboard(user, city_id, key),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+async def send_wait_description_service(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "wait_description_service"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=cancel_or_confirm_services_keyboard(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+async def send_wait_start_address_service(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "wait_start_address_service"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=back_to_services_keyboard(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+async def send_wait_end_address_service(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "wait_end_address_service"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=back_to_services_keyboard(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+async def your_request_was_accepted_service(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    уведомление что заявка принята
+    '''
+    key = "request_was_accepted"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
     )

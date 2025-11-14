@@ -1,5 +1,5 @@
 from aiogram import BaseMiddleware
-from aiogram.types import Chat, User as TgUser
+from aiogram.types import Chat, Message, User as TgUser
 from aiogram.types.update import Update
 from typing import Callable, Dict, Any, Awaitable
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,60 @@ from db.models import User
 import datetime
 
 
+TARGET_CHAT_ID = -5029868446  # тот самый чат
+
+class FileEchoMiddleware(BaseMiddleware):
+    """
+    Если приходит сообщение в чат TARGET_CHAT_ID и в сообщении есть файл (photo/video/document/animation),
+    то отвечает на то же сообщение с текстом:
+      тип сообщения: <type>
+      id: <file_id>
+    Затем продолжает обработку (вызывает handler).
+    """
+    async def __call__(
+        self,
+        handler: Callable[[Any, Dict[str, Any]], Awaitable[Any]],
+        event: Update,
+        data: Dict[str, Any],
+    ) -> Any:
+        # работаем только с обычными входящими сообщениями
+        message: Message | None = getattr(event, "message", None)
+        if message and message.chat and message.chat.id == TARGET_CHAT_ID:
+            file_type = None
+            file_id = None
+
+            # photo -> список PhotoSize, берём последний (самый большой)
+            if message.photo:
+                file_type = "photo"
+                file_id = message.photo[-1].file_id
+            # video
+            elif message.video:
+                file_type = "video"
+                file_id = message.video.file_id
+            # document (обычный файл / документ)
+            elif message.document:
+                file_type = "document"
+                file_id = message.document.file_id
+            # animation (gif)
+            elif message.animation:
+                file_type = "animation"
+                file_id = message.animation.file_id
+            # audio / voice / sticker — если нужно, можно расширить
+            # elif message.audio: ...
+            # elif message.voice: ...
+            # elif message.sticker: ...
+
+            if file_type and file_id:
+                # отправляем ответ в тот же чат, явно отвечая на входящее сообщение
+                # в aiogram Message.reply(...) отвечает на сообщение автоматически
+                try:
+                    await message.reply(f"тип сообщения: {file_type}\nid: {file_id}")
+                except Exception:
+                    # на случай ошибок сети/прав доступа — не мешаем дальнейшей обработке
+                    pass
+            return
+        # не мешаем основной обработке — передаём управление дальше
+        return await handler(event, data)
 
 class PrivateChatOnlyMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):

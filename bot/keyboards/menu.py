@@ -65,6 +65,28 @@ def get_search_type_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
+def get_comissiom_type_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора типа аренды
+    """
+    rows = [
+            [
+                InlineKeyboardButton(text=f"{btn(lang, 'comission_owner_btn')}", callback_data="comissiom_type|owner"),
+            ],
+            [
+                InlineKeyboardButton(text=f"{btn(lang, 'comission_rieltor_btn')}", callback_data="comissiom_type|rieltor"),
+            ],
+            [
+                InlineKeyboardButton(text=f"{btn(lang, 'comission_all_btn')}", callback_data="comissiom_type|all"),
+            ]
+        ]
+    rows.append(
+        [InlineKeyboardButton(text=f"{btn(lang, 'back')}", callback_data="back_from|comissiom_type")]
+    )
+    return InlineKeyboardMarkup(
+        inline_keyboard=rows
+    )
+
 def get_estate_type_keyboard(lang: str | None = None, deal_type: str= None) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора типа недвижимости
@@ -106,7 +128,11 @@ def get_market_type_keyboard(lang: str | None = None) -> InlineKeyboardMarkup:
     )
 
 
-def get_select_city_keyboard(lang: str | None = None, cities: list[City] = []) -> InlineKeyboardMarkup:
+def get_select_city_keyboard(
+        lang: str | None = None,
+        cities: list[City] = [],
+        callback: str="select_city",
+        back: bool=True) -> InlineKeyboardMarkup:
     """
     Клавиатура выбора города (по два в ряд)
     """
@@ -117,16 +143,17 @@ def get_select_city_keyboard(lang: str | None = None, cities: list[City] = []) -
     for city in cities:
         builder.button(
             text=city.get_name_local(lang),
-            callback_data=f"select_city|{city.id}",
+            callback_data=f"{callback}|{city.id}",
         )
 
     # упаковать по 2 в ряд
     builder.adjust(2)
 
     # кнопка "Назад" отдельной строкой
-    builder.row(
-        InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|select_city")
-    )
+    if back:
+        builder.row(
+            InlineKeyboardButton(text=btn(lang, "back"), callback_data="back_from|select_city")
+        )
 
     return builder.as_markup()
 

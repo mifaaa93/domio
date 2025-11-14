@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from threading import Event
 from db.fsm_storage import PostgresFSMStorage
-from bot.middlewares import DBSessionMiddleware, UserActivityMiddleware, PrivateChatOnlyMiddleware
+from bot.middlewares import DBSessionMiddleware, UserActivityMiddleware, PrivateChatOnlyMiddleware, FileEchoMiddleware
 from bot.handlers import start, menu, search, settings, other
 from config import BOT_TOKEN
 from bot.workers import newsletter_worker
@@ -21,7 +21,9 @@ async def run_bot(stop_event: Event) -> None:
     """Асинхронный запуск бота с корректным завершением через threading.Event"""
     bot = Bot(
         token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML,
+            link_preview_is_disabled=True)
     )
 
     for name in ("aiogram", "aiogram.event", "aiogram.dispatcher", "aiogram.fsm"):
@@ -32,7 +34,7 @@ async def run_bot(stop_event: Event) -> None:
 
     storage = PostgresFSMStorage()
     dp = Dispatcher(storage=storage)
-
+    dp.update.middleware(FileEchoMiddleware())
     dp.update.middleware(PrivateChatOnlyMiddleware())
     dp.update.middleware(DBSessionMiddleware())
     dp.update.middleware(UserActivityMiddleware())

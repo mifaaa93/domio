@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from aiogram import Bot
 from aiogram.exceptions import (
@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from db.session import get_async_session
-from db.models import Listing, User, ScheduledMessage, ScheduledStatus, MessageType, ChatType  # предполагается
+from db.models import Listing, User, ScheduledMessage, MessageType, ChatType  # предполагается
 from db.repo_async import (
     get_users_for_listing,
     claim_due_messages,
@@ -33,6 +33,9 @@ from bot.utils.messages import (
     successful_subscription,
     successful_subscription_channel,
     successful_confirm_earn_channel,
+    guides_sale,
+    successful_guides_channel,
+    successful_confirm_service_channel,
     )
 
 
@@ -406,12 +409,21 @@ async def send_scheduled_message(bot: Bot, msg: ScheduledMessage) -> bool:
     try:
         # Можно разветвить логику по типу (пример)
         if mtype == MessageType.INVOICE and sub_type=="done":
-            # юзеру про подписку
+            # юзеру и в канал про подписку
             user = msg.user
             if msg.chat_type == ChatType.PRIVATE:
                 message = await successful_subscription(user=user, bot=bot, payload=payload)
             elif msg.chat_type == ChatType.CHANNEL:
                 message = await successful_subscription_channel(user=user, bot=bot, payload=payload, chat_id=msg.chat_id)
+            return True
+        
+        elif mtype == MessageType.INVOICE and sub_type=="guides":
+            # юзеру и в канал про покупку гайда
+            user = msg.user
+            if msg.chat_type == ChatType.PRIVATE:
+                message = await guides_sale(user=user, bot=bot)
+            elif msg.chat_type == ChatType.CHANNEL:
+                message = await successful_guides_channel(user=user, bot=bot, payload=payload, chat_id=msg.chat_id)
             return True
     
         elif mtype == MessageType.INVOICE:
@@ -429,7 +441,8 @@ async def send_scheduled_message(bot: Bot, msg: ScheduledMessage) -> bool:
             if payload.get("from") == "confirm_earn":
                 # уведомление в канал что запрошен вывод средств
                 message = await successful_confirm_earn_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
-
+            elif payload.get("from") == "service":
+                message = await successful_confirm_service_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
         return True
     
 

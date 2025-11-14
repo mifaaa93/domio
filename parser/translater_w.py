@@ -187,7 +187,7 @@ def _places_worker(stop_evt: threading.Event, name: str):
             except Exception:
                 logger.exception("[%s] cities batch failed, rollback", name)
                 session.rollback()
-
+        with get_sync_session() as session:
             # районы
             try:
                 districts = _claim_districts_batch(session)
