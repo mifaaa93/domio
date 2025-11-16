@@ -9,7 +9,7 @@ from db.models import User, MessageType, ChatType
 from db.repo_async import schedule_message, get_cities, add_statistic_data
 from bot.utils.messages import *
 from bot.texts import alert_t, btn
-from bot.states import ServiceStates
+from bot.states import ServiceStates, AgentStates
 from html import escape
 
 
@@ -372,3 +372,59 @@ async def process_service_request(
 
     return await your_request_was_accepted_service(target, user, try_edit)
     
+
+
+@router.callback_query(F.data.startswith("select_city_agent|"))
+async def select_city_agent_callback(callback: CallbackQuery, session: AsyncSession, user: User, state: FSMContext):
+    '''
+    выбор города для других услуг.
+    select_city_agent|select_city_agent кнопка назад
+    select_city_agent|city|{city_id} кнопка выдор города
+    select_city_agent|keys|rent or sale|{city_id} кнопка выбор услуги в городе
+    select_city_agent|confirm|rent or sale|{city_id}
+    '''
+    _, command = callback.data.split("|", 1)  # city|122
+
+    if command == "select_city_agent":
+        # назад к выбору города
+        cities = await get_cities(session, CITIES_STR)
+        await contact_agent(callback, user, try_edit=True, cities=cities)
+
+    elif command.startswith("city|"):
+        # выьран город, переходим к выбору услуги
+        _, city_id = command.split("|", 1)  # 124
+        # --- получить или создать фильтр для пользователя ---
+        city_id = int(city_id)
+        city = await session.get(City, city_id)
+        if not city:
+            # если города нету то возвращаем к выбору городов
+            cities = await get_cities(session, CITIES_STR)
+            await contact_agent(callback, user, try_edit=True, cities=cities)
+            return
+        await agent_deal_type(callback, user, int(city_id), True)
+        await state.clear()
+    
+    elif command.startswith("keys|"):
+        # выьран город, переходим к выбору услуги
+        _, deal_type, city_id = command.split("|", 2)  # rent or sale, 124
+        # --- получить или создать фильтр для пользователя ---
+        city_id = int(city_id)
+        city = await session.get(City, city_id)
+        if not city:
+            # если города нету то возвращаем к выбору городов
+            cities = await get_cities(session, CITIES_STR)
+            await contact_agent(callback, user, try_edit=True, cities=cities)
+            return
+        
+        new_message = await agent_price_range(callback, user, city_id, True)
+
+        await state.set_state(AgentStates.wait_price_range)
+        await state.set_data({
+            "to_delete": [
+                (new_message.chat.id, new_message.message_id)
+                ],
+            "key": "agent",
+            "deal_type": deal_type,
+            "city": city.name_uk,
+            "city_id": city_id,
+            })

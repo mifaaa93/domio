@@ -246,3 +246,41 @@ def cancel_or_confirm_services_keyboard(user: User, city_id: int) -> InlineKeybo
         )
 
     return builder.as_markup()
+
+
+def get_deal_type_agent_btn(user: User, city_id: int) -> InlineKeyboardMarkup:
+    '''
+    кнопки выбора типа недвижимости для связи с риелтором
+    '''
+    lang = user.language_code
+    builder = InlineKeyboardBuilder()
+    # кнопка отключения автопродления 
+    builder.add(
+        InlineKeyboardButton(
+            text=f"{btn(lang, 'rent_btn')}",
+            callback_data=f"select_city_agent|keys|rent|{city_id}"),
+        InlineKeyboardButton(
+            text=f"{btn(lang, 'sale_btn')}",
+            callback_data=f"select_city_agent|keys|sale|{city_id}"),
+    )
+    builder.row(
+            InlineKeyboardButton(
+                text=btn(lang, "back"),
+                callback_data=f"select_city_agent|select_city_agent"))
+    
+
+    return builder.as_markup()
+
+
+def back_to_select_deal_type_agent_keyboard(user: User, city_id: int) -> InlineKeyboardMarkup:
+    """кнопка назад из выбора бюджета при связи с риелтором"""
+    builder = InlineKeyboardBuilder()
+    # кнопка отключения автопродления 
+    
+    builder.row(
+            InlineKeyboardButton(
+                text=btn(user.language_code, "back"),
+                callback_data=f"select_city_agent|city|{city_id}"))
+    
+
+    return builder.as_markup()

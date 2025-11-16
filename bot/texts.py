@@ -94,6 +94,11 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "en": "Enter the <b>maximum</b> price of the property you're looking for",
         "pl": "Wpisz <b>do jakiej</b> ceny szukasz nieruchomości"
     },
+    "price_range": {
+        "uk": "Впиши бюджет <b>від до</b>,\nнаприклад 3000-5000",
+        "en": "Enter the budget <b>from–to</b>,\nfor example 3000–5000",
+        "pl": "Wpisz budżet <b>od do</b>,\nna przykład 3000–5000"
+    },
     "child": {
         "uk": "Маєш дітей",
         "en": "Do you have children?",

@@ -8,7 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from threading import Event
 from db.fsm_storage import PostgresFSMStorage
 from bot.middlewares import DBSessionMiddleware, UserActivityMiddleware, PrivateChatOnlyMiddleware, FileEchoMiddleware
-from bot.handlers import start, menu, search, settings, other
+from bot.handlers import start, menu, search, settings, other, admin
 from config import BOT_TOKEN
 from bot.workers import newsletter_worker
 import contextlib
@@ -39,7 +39,9 @@ async def run_bot(stop_event: Event) -> None:
     dp.update.middleware(DBSessionMiddleware())
     dp.update.middleware(UserActivityMiddleware())
 
+    
     dp.include_router(start.router)
+    dp.include_router(admin.router)
     dp.include_router(settings.router)
     dp.include_router(menu.router)
     dp.include_router(search.router)

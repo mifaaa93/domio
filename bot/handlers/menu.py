@@ -139,7 +139,7 @@ async def contact_agent_btn_press(msg: Message, session: AsyncSession, user: Use
         F.text.in_(btn_tuple("builders_services")))
 async def builders_services_btn_press(msg: Message, session: AsyncSession, user: User, state: FSMContext):
     """
-    нажата кнопка Контакт з ріелтором
+    нажата кнопка 🛠 Інші послуги
     """
     # меню выбора инструкций
     cities = await get_cities(session, CITIES_STR)

@@ -796,7 +796,7 @@ async def contact_agent(
         key=key,
         lang=lang,
         text=t(lang, key),
-        keyboard=get_select_city_keyboard(lang, cities, key, False),
+        keyboard=get_select_city_keyboard(lang, cities, "select_city_agent|city", False),
         try_edit=try_edit,
         photo=get_image(lang, key)
     )
@@ -988,6 +988,49 @@ async def your_request_was_accepted_service(
         key=key,
         lang=lang,
         text=t(lang, key),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+async def agent_deal_type(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "search_type"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=get_deal_type_agent_btn(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+async def agent_price_range(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "price_range"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=back_to_select_deal_type_agent_keyboard(user, city_id),
         try_edit=try_edit,
         #photo=get_image(lang, key)
     )
