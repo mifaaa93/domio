@@ -284,3 +284,33 @@ def back_to_select_deal_type_agent_keyboard(user: User, city_id: int) -> InlineK
     
 
     return builder.as_markup()
+
+
+def cancel_or_confirm_agent_keyboard(user: User, city_id: int) -> InlineKeyboardMarkup:
+    """
+    кнопки регламент и политика конфиденциальности
+    кнопка отмены и кнопка пропустить
+    """
+    builder = InlineKeyboardBuilder()
+    # кнопка отключения автопродления 
+    lang = user.language_code
+
+    builder.row(
+            InlineKeyboardButton(
+                text=btn(lang, "skip"),
+                callback_data=f"select_city_agent|finish"))
+    
+    builder.row(
+            InlineKeyboardButton(
+                text=btn(lang, "cancel"),
+                callback_data=f"select_city_agent|city|{city_id}"))
+    builder.row(
+            InlineKeyboardButton(
+                text=btn(lang, "reglament_btn_text"),
+                web_app=WebAppInfo(url=REGLAMENT_URLS.get(lang, REGLAMENT_URLS.get("pl")))),
+            InlineKeyboardButton(
+                text=btn(lang, "privacy_btn_text"),
+                web_app=WebAppInfo(url=PRIVACI_URLS.get(lang, PRIVACI_URLS.get("pl"))))
+        )
+
+    return builder.as_markup()

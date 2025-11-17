@@ -993,6 +993,45 @@ async def your_request_was_accepted_service(
     )
 
 
+async def your_request_was_accepted_agent(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    уведомление что заявка на связь с риелтором принята
+    '''
+    key = "request_agent_was_accepted"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+async def your_request_was_not_accepted_agent(
+        target: Message | CallbackQuery,
+        user: User,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    уведомление что заявка на связь с риелтором не принята, так как еще нету в этом городе
+    '''
+    key = "request_agent_was_not_accepted"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
 async def agent_deal_type(
         target: Message | CallbackQuery,
         user: User,
@@ -1031,6 +1070,29 @@ async def agent_price_range(
         lang=lang,
         text=t(lang, key),
         keyboard=back_to_select_deal_type_agent_keyboard(user, city_id),
+        try_edit=try_edit,
+        #photo=get_image(lang, key)
+    )
+
+
+
+async def send_wait_description_agent(
+        target: Message | CallbackQuery,
+        user: User,
+        city_id: int,
+        try_edit: bool=False,
+        ) -> Message:
+    '''
+    показываем контакт сервиса и кнопка назад к выбору услуг
+    '''
+    key = "wait_description_agent"
+    lang = user.language_code
+    return await send_or_edit_message(
+        target,
+        key=key,
+        lang=lang,
+        text=t(lang, key),
+        keyboard=cancel_or_confirm_agent_keyboard(user, city_id),
         try_edit=try_edit,
         #photo=get_image(lang, key)
     )

@@ -442,6 +442,10 @@ async def send_scheduled_message(bot: Bot, msg: ScheduledMessage) -> bool:
                 # уведомление в канал что запрошен вывод средств
                 message = await successful_confirm_earn_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
             elif payload.get("from") == "service":
+                # отправка в канал связь с по другим услугам
+                message = await successful_confirm_service_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
+            elif payload.get("from") == "agent":
+                # отправка в канал связь с риелтором
                 message = await successful_confirm_service_channel(user=msg.user, bot=bot, payload=payload, chat_id=msg.chat_id)
         return True
     

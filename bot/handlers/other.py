@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from sqlalchemy.ext.asyncio import AsyncSession
-from config import REFERAL_CHANNEL, CITIES_STR, SERVICES_CHANNELS
+from config import REFERAL_CHANNEL, CITIES_STR, SERVICES_CHANNELS, AGENT_CHANNELS
 
 from db.models import User, MessageType, ChatType
 from db.repo_async import schedule_message, get_cities, add_statistic_data
@@ -234,6 +234,7 @@ async def handle_start_address(message: Message, session: AsyncSession, user: Us
     if not old_data:
         cities = await get_cities(session, CITIES_STR)
         await builders_services(message, user, try_edit=False, cities=cities)
+        await state.clear()
         return
     if old_data:
         items = old_data.pop("to_delete", [])
@@ -266,6 +267,7 @@ async def handle_end_address(message: Message, session: AsyncSession, user: User
     if not old_data:
         cities = await get_cities(session, CITIES_STR)
         await builders_services(message, user, try_edit=False, cities=cities)
+        await state.clear()
         return
     if old_data:
         items = old_data.pop("to_delete", [])
@@ -309,6 +311,7 @@ async def handle_description(message: Message, session: AsyncSession, user: User
     if not old_data:
         cities = await get_cities(session, CITIES_STR)
         await builders_services(message, user, try_edit=False, cities=cities)
+        await state.clear()
         return
     
     if old_data:
@@ -322,56 +325,6 @@ async def handle_description(message: Message, session: AsyncSession, user: User
     await state.clear()
 
     await process_service_request(session, message, user, old_data, try_edit=False)
-    
-
-
-async def process_service_request(
-        session: AsyncSession,
-        target: Message | CallbackQuery,
-        user: User,
-        data: dict,
-        try_edit: bool=False) -> Message:
-    '''
-    создаем сообщение в очередь на отправку в канал
-    также записываем статистику по заявкам
-    data = {
-            "channel_id": -1003336596169,
-            "key": "moving_transport",
-            "city": "Краків",
-            "city_id": 65,
-            "work_type": "🚚 Транспорт при переїзді",
-            "start_address": "Варшава",
-            "end_address": "Катовице",
-            "description": description
-        }
-    text =📍 Місто: {{city}}
-🛠 Вид робіт: {{work_type}}
-💬 Мова спілкування: {{language}}
-👤 Користувач: @{{username}}
-📞 Статус: очікує дзвінка від асистента"
-    '''
-    text = f"📍 Місто: {data.get('city')}\n"
-    text += f"🛠 Вид робіт: {data.get('work_type')}\n"
-    text += f"📍Звідки: {data.get('start_address')}\n" if data.get('start_address') else ''
-    text += f"📍Куди: {data.get('end_address')}\n" if data.get('end_address') else ''
-    text += f"💬 Мова спілкування: {user.language}\n"
-    text += f"👤 Користувач: {user.get_link}\n"
-    text += f"📞 Статус: очікує дзвінка від асистента\n"
-    text += f"📝 Контакт та коментарі:\n{escape(data.get('description', '-----'))}\n"
-        
-    await schedule_message(
-            session,
-            MessageType.CUSTOM,
-            chat_type=ChatType.CHANNEL,
-            chat_id=data.get("channel_id"),
-            
-            payload={"from": "service", "text": text},
-            user_id=user.id
-            )
-    await add_statistic_data(session, user, "services", "send", data)
-
-    return await your_request_was_accepted_service(target, user, try_edit)
-    
 
 
 @router.callback_query(F.data.startswith("select_city_agent|"))
@@ -415,7 +368,7 @@ async def select_city_agent_callback(callback: CallbackQuery, session: AsyncSess
             cities = await get_cities(session, CITIES_STR)
             await contact_agent(callback, user, try_edit=True, cities=cities)
             return
-        
+        channel_id = AGENT_CHANNELS.get(city.name_pl)
         new_message = await agent_price_range(callback, user, city_id, True)
 
         await state.set_state(AgentStates.wait_price_range)
@@ -423,8 +376,174 @@ async def select_city_agent_callback(callback: CallbackQuery, session: AsyncSess
             "to_delete": [
                 (new_message.chat.id, new_message.message_id)
                 ],
-            "key": "agent",
+            "channel_id": channel_id,
             "deal_type": deal_type,
             "city": city.name_uk,
             "city_id": city_id,
             })
+    elif command == "finish":
+        # нажата кнопка опубликовать без контакта и комментария
+        old_data = await state.get_data()
+        await state.clear()
+        await process_agent_request(session, callback, user, old_data, try_edit=True)
+
+
+@router.message(StateFilter(AgentStates.wait_price_range))
+async def handle_price_range(message: Message, session: AsyncSession, user: User, state: FSMContext):
+    """
+    ожидаем от юзера стоимость от и до для соединения с риелтором
+    """
+    price_range = message.text or message.caption
+    await message.delete()
+    if price_range is None:
+        return
+    
+    old_data = await state.get_data()
+    if not old_data:
+        cities = await get_cities(session, CITIES_STR)
+        await contact_agent(message, user, try_edit=False, cities=cities)
+        await state.clear()
+        return
+    
+    if old_data:
+        items = old_data.pop("to_delete", [])
+        for ch_id, m_id in items:
+            try:
+                await message.bot.delete_message(ch_id, m_id)
+            except Exception as e:
+                pass
+    
+    city_id = old_data["city_id"]
+
+    new_message = await send_wait_description_agent(message, user, city_id=city_id, try_edit=False)
+    old_data["price_range"] = price_range
+    old_data["to_delete"] = [(new_message.chat.id, new_message.message_id)]
+    
+    await state.set_state(AgentStates.wait_description)
+    await state.set_data(old_data)
+
+
+@router.message(StateFilter(AgentStates.wait_description))
+async def handle_wait_description_agent(message: Message, session: AsyncSession, user: User, state: FSMContext):
+    """
+    ожидаем от юзера контакты для отправки риелтору
+    {
+        "channel_id": -1003336596169,
+        "city": "Краків",
+        "city_id": 65,
+        "deal_type": 'rent' 'sale',
+        "price_range": "1000-2000",
+        "description": description
+    }
+    """
+    description = message.text or message.caption
+    await message.delete()
+    if description is None:
+        return
+    
+    old_data: dict = await state.get_data()
+
+    if not old_data:
+        cities = await get_cities(session, CITIES_STR)
+        await contact_agent(message, user, try_edit=False, cities=cities)
+        await state.clear()
+        return
+    
+    if old_data:
+        items = old_data.pop("to_delete", [])
+        for ch_id, m_id in items:
+            try:
+                await message.bot.delete_message(ch_id, m_id)
+            except Exception as e:
+                pass
+    old_data["description"] = description
+    await state.clear()
+
+    await process_agent_request(session, message, user, old_data, try_edit=False)
+
+
+async def process_agent_request(
+        session: AsyncSession,
+        target: Message | CallbackQuery,
+        user: User,
+        data: dict,
+        try_edit: bool=False) -> Message:
+    '''
+    создаем сообщение в очередь на отправку в канал
+    также записываем статистику по заявкам
+    data = {
+        "channel_id": -1003336596169,
+        "city": "Краків",
+        "city_id": 65,
+        "deal_type": 'rent' 'sale',
+        "price_range": "1000-2000",
+        "description": description
+    }
+    '''
+    chat_id = data.get("channel_id")
+    if chat_id:
+        text = f"📍 Місто: <b>{data.get('city')}</b>\n"
+        text += f"🛠 Тип пошуку: <b>{'Оренда' if data.get('deal_type')=='rent' else 'Купівля'}</b>\n"
+        text += f"💰 Бюджет Від-До: <b>{data.get('price_range')}</b>\n"
+        text += f"💬 Мова спілкування: <b>{user.language}</b>\n"
+        text += f"👤 Користувач: <b>{user.get_link}</b>\n"
+        text += f"📝 Контакт та коментарі:\n{escape(data.get('description', '-----'))}\n"
+            
+        await schedule_message(
+                session,
+                MessageType.CUSTOM,
+                chat_type=ChatType.CHANNEL,
+                chat_id=data.get("channel_id"),
+                payload={"from": "agent", "text": text},
+                user_id=user.id
+                )
+        
+        await add_statistic_data(session, user, "agent", "send", data)
+
+        return await your_request_was_accepted_agent(target, user, try_edit)
+    else:
+        await add_statistic_data(session, user, "agent", "send", data)
+        return await your_request_was_not_accepted_agent(target, user, try_edit)
+
+
+async def process_service_request(
+        session: AsyncSession,
+        target: Message | CallbackQuery,
+        user: User,
+        data: dict,
+        try_edit: bool=False) -> Message:
+    '''
+    создаем сообщение в очередь на отправку в канал
+    также записываем статистику по заявкам
+    data = {
+            "channel_id": -1003336596169,
+            "key": "moving_transport",
+            "city": "Краків",
+            "city_id": 65,
+            "work_type": "🚚 Транспорт при переїзді",
+            "start_address": "Варшава",
+            "end_address": "Катовице",
+            "description": description
+        }
+    '''
+    text = f"📍 Місто: <b>{data.get('city')}</b>\n"
+    text += f"🛠 Вид робіт: <b>{data.get('work_type')}</b>\n"
+    text += f"📍Звідки: <b>{data.get('start_address')}</b>\n" if data.get('start_address') else ''
+    text += f"📍Куди: <b>{data.get('end_address')}</b>\n" if data.get('end_address') else ''
+    text += f"💬 Мова спілкування: <b>{user.language}</b>\n"
+    text += f"👤 Користувач: <b>{user.get_link}</b>\n"
+    text += f"📞 Статус: очікує дзвінка від асистента\n"
+    text += f"📝 Контакт та коментарі:\n{escape(data.get('description', '-----'))}\n"
+        
+    await schedule_message(
+            session,
+            MessageType.CUSTOM,
+            chat_type=ChatType.CHANNEL,
+            chat_id=data.get("channel_id"),
+            
+            payload={"from": "service", "text": text},
+            user_id=user.id
+            )
+    await add_statistic_data(session, user, "services", "send", data)
+
+    return await your_request_was_accepted_service(target, user, try_edit)

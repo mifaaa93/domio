@@ -99,6 +99,22 @@ TEXTS: Dict[str, Dict[Lang, str]] = {
         "en": "Enter the budget <b>from–to</b>,\nfor example 3000–5000",
         "pl": "Wpisz budżet <b>od do</b>,\nna przykład 3000–5000"
     },
+    "wait_description_agent": {
+        "uk": "Напиши своє <b>ім'я</b> та <b>номер телефону</b>\n\n<i>Надсилаючи свої дані ти підтерджуєш Регламент та Політику приватності</i>",
+        "en": "Write your <b>name</b> and <b>phone number</b>\n\n<i>By sending your data, you confirm the Terms and the Privacy Policy</i>",
+        "pl": "Napisz swoje <b>imię</b> i <b>numer telefonu</b>\n\n<i>Przesyłając swoje dane, potwierdzasz Regulamin i Politykę prywatności</i>",
+    },
+    "request_agent_was_accepted": {
+        "uk": "✅ Заявку отримано!\n\n<b>Ріелтор Domio</b> вже готується з тобою зв’язатися, щоб обговорити наступні кроки.",
+        "en": "✅ Your request has been received!\n\n<b>A Domio realtor</b> is getting ready to contact you to discuss the next steps.",
+        "pl": "✅ Zgłoszenie zostało odebrane!\n\n<b>Realtor Domio</b> wkrótce się z Tobą skontaktuje, aby omówić kolejne kroki."
+    },
+
+    "request_agent_was_not_accepted": {
+        "uk": "На цей момент рієлтори Domio працюють у Кракові, Вроцлаві та Катовіцах. Якщо ти шукаєш житло в іншому місті — ми повідомимо, коли сервіс запрацює у твоєму регіоні",
+        "en": "At the moment, Domio realtors are working in Kraków, Wrocław and Katowice. If you are looking for housing in another city we will notify you when the service becomes available in your area.",
+        "pl": "Obecnie realtorzy Domio pracują w Krakowie, Wrocławiu i Katowicach. Jeśli szukasz mieszkania w innym mieście — my damy znać, gdy usługa pojawi się w Twoim regionie."
+    },
     "child": {
         "uk": "Маєш дітей",
         "en": "Do you have children?",

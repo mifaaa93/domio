@@ -157,6 +157,17 @@ CITIES_STR_SALE = (
     "Katowice",
     )
 
+AGENT_CHANNELS = {
+    "Warszawa": HIPOTEKA_LEADS_CHANNEL,
+    "Kraków": None,
+    "Łódź": None,
+    "Wrocław": None,
+    "Poznań": None,
+    "Gdańsk": None,
+    "Szczecin": None,
+    "Katowice": None,
+}
+
 CITY_DISTRICTS = {
     "Warszawa": [
         "Centrum", "Bemowo", "Białołęka", "Bielany", "Mokotów", "Ochota",
